@@ -9,4 +9,5 @@ src/generated/prisma/
 coverage/
 playwright-report/
 test-results/
+*.tsbuildinfo
 .superpowers/

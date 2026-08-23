@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique @db.VarChar(254)
+  passwordHash String         @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  sessions     StudySession[]
+
+  @@map("users")
+}
+
+model StudySession {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  studyDate            DateTime @map("study_date") @db.Date
+  subject              String   @db.VarChar(120)
+  subjectKey           String   @map("subject_key") @db.VarChar(120)
+  totalQuestions       Int      @map("total_questions")
+  correctAnswers       Int      @map("correct_answers")
+  wrongAnswers         Int      @map("wrong_answers")
+  questionListUrl      String?  @map("question_list_url") @db.VarChar(2048)
+  wrongQuestionListUrl String?  @map("wrong_question_list_url") @db.VarChar(2048)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, studyDate(sort: Desc)])
+  @@index([userId, subjectKey, studyDate])
+  @@map("study_sessions")
+}
