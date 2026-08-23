@@ -99,6 +99,19 @@ describe("study session repository", () => {
         wrongAnswers: 3,
       };
     });
+    const strangerSessions = Array.from({ length: 20 }, (_, index) => {
+      const day = String(index + 1).padStart(2, "0");
+      return {
+        id: `stranger-day-${day}`,
+        userId: stranger.id,
+        studyDate: new Date(`2026-09-${day}T00:00:00.000Z`),
+        subject: `Sessão alheia ${day}`,
+        subjectKey: `sessao alheia ${day}`,
+        totalQuestions: 10,
+        correctAnswers: 7,
+        wrongAnswers: 3,
+      };
+    });
     await prisma.studySession.createMany({
       data: [
         ...dailySessions,
@@ -124,16 +137,7 @@ describe("study session repository", () => {
           correctAnswers: 7,
           wrongAnswers: 3,
         },
-        {
-          id: "stranger-session",
-          userId: stranger.id,
-          studyDate: new Date("2026-08-31T00:00:00.000Z"),
-          subject: "Sessão alheia",
-          subjectKey: "sessao alheia",
-          totalQuestions: 10,
-          correctAnswers: 7,
-          wrongAnswers: 3,
-        },
+        ...strangerSessions,
       ],
     });
 
