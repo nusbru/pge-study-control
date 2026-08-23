@@ -1,0 +1,18 @@
+:root {
+  --paper: #f7f7f4;
+  --surface: #ffffff;
+  --ink: #25283a;
+  --muted: #747680;
+  --line: #e6e6df;
+  --accent: #e95d3f;
+  --correct: #4a568c;
+  --danger: #e95d3f;
+  --radius: 1rem;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--paper); color: var(--ink); }
+body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; }
+a { color: inherit; }
+button, input { font: inherit; }

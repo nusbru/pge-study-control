@@ -1,2 +1,12 @@
-.superpowers/
 .worktrees/
+node_modules/
+.next/
+src/generated/prisma/
+.env
+.env.*
+!.env.example
+!.env.test.example
+coverage/
+playwright-report/
+test-results/
+.superpowers/
