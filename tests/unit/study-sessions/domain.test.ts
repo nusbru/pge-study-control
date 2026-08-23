@@ -22,6 +22,30 @@ describe("study-session domain", () => {
       .toThrow("O total deve ser igual à soma de acertos e erros.");
   });
 
+  it("requires at least two count fields", () => {
+    expect(() => resolveQuestionCounts({ totalQuestions: 50 }))
+      .toThrow("Informe pelo menos dois valores.");
+  });
+
+  it("rejects a zero total", () => {
+    expect(() => resolveQuestionCounts({ correctAnswers: 0, wrongAnswers: 0 }))
+      .toThrow("O total deve ser maior que zero.");
+  });
+
+  it.each([
+    { totalQuestions: -1, correctAnswers: 0 },
+    { totalQuestions: 1.5, correctAnswers: 1 },
+    { totalQuestions: 1_000_001, correctAnswers: 1 },
+  ])("rejects invalid count input %o", (input) => {
+    expect(() => resolveQuestionCounts(input))
+      .toThrow("Use números inteiros entre 0 e 1.000.000.");
+  });
+
+  it("rejects a derived total above the count limit", () => {
+    expect(() => resolveQuestionCounts({ correctAnswers: 1_000_000, wrongAnswers: 1_000_000 }))
+      .toThrow("Use números inteiros entre 0 e 1.000.000.");
+  });
+
   it("rounds percentages to one decimal place", () => {
     expect(percentage(2, 3)).toBe(66.7);
   });

@@ -1,17 +1,26 @@
 import { z } from "zod";
 import { normalizeSubject, resolveQuestionCounts } from "./domain";
 
+const COUNT_ERROR = "Use números inteiros entre 0 e 1.000.000.";
+const DATE_ERROR = "Informe uma data válida.";
+const SUBJECT_ERROR = "Informe um assunto com até 120 caracteres.";
+const URL_ERROR = "Informe uma URL HTTP ou HTTPS válida.";
+
 const optionalCount = z.preprocess(
   (value) => value === "" || value === null ? undefined : typeof value === "string" ? Number(value) : value,
-  z.number().int().min(0).max(1_000_000).optional(),
+  z.number({ error: COUNT_ERROR })
+    .int({ error: COUNT_ERROR })
+    .min(0, { error: COUNT_ERROR })
+    .max(1_000_000, { error: COUNT_ERROR })
+    .optional(),
 );
 
 const optionalHttpUrl = z.preprocess(
   (value) => value === "" || value === undefined ? null : value,
-  z.string().max(2_048).refine((value) => {
+  z.string({ error: URL_ERROR }).max(2_048, { error: URL_ERROR }).refine((value) => {
     try { return ["http:", "https:"].includes(new URL(value).protocol); }
     catch { return false; }
-  }, "Informe uma URL HTTP ou HTTPS válida.").nullable(),
+  }, URL_ERROR).nullable(),
 );
 
 function isCalendarDate(value: string) {
@@ -22,14 +31,14 @@ function isCalendarDate(value: string) {
 }
 
 const rawStudySessionSchema = z.object({
-  studyDate: z.string().refine(isCalendarDate, "Informe uma data válida."),
-  subject: z.string(),
+  studyDate: z.string({ error: DATE_ERROR }).refine(isCalendarDate, DATE_ERROR),
+  subject: z.string({ error: SUBJECT_ERROR }),
   totalQuestions: optionalCount,
   correctAnswers: optionalCount,
   wrongAnswers: optionalCount,
   questionListUrl: optionalHttpUrl,
   wrongQuestionListUrl: optionalHttpUrl,
-});
+}, { error: "Dados inválidos." });
 
 export const studySessionInputSchema = rawStudySessionSchema.transform((data, context) => {
   try {

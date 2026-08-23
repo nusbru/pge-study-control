@@ -17,16 +17,16 @@ export function normalizeSubject(value: string) {
 export function resolveQuestionCounts(input: QuestionCountInput): ResolvedQuestionCounts {
   const entries = Object.values(input).filter((value) => value !== undefined);
   if (entries.length < 2) throw new Error("Informe pelo menos dois valores.");
-  for (const value of entries) {
-    if (!Number.isInteger(value) || value! < 0 || value! > COUNT_MAX) {
-      throw new Error("Use números inteiros entre 0 e 1.000.000.");
-    }
-  }
 
   const totalQuestions = input.totalQuestions ?? input.correctAnswers! + input.wrongAnswers!;
   const correctAnswers = input.correctAnswers ?? totalQuestions - input.wrongAnswers!;
   const wrongAnswers = input.wrongAnswers ?? totalQuestions - correctAnswers;
 
+  for (const value of [totalQuestions, correctAnswers, wrongAnswers]) {
+    if (!Number.isInteger(value) || value < 0 || value > COUNT_MAX) {
+      throw new Error("Use números inteiros entre 0 e 1.000.000.");
+    }
+  }
   if (totalQuestions <= 0) throw new Error("O total deve ser maior que zero.");
   if (correctAnswers < 0 || wrongAnswers < 0 || totalQuestions !== correctAnswers + wrongAnswers) {
     throw new Error("O total deve ser igual à soma de acertos e erros.");
