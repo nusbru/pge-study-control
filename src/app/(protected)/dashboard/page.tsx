@@ -40,7 +40,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p>Uma leitura ponderada das questões para orientar o próximo assunto de estudo.</p>
           </div>
         </header>
-        <LocalTodayRedirect period={period} />
+        <LocalTodayRedirect period={period} today={today} />
       </main>
     );
   }
@@ -50,57 +50,60 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const overallWrong = formatPercentage(data.overall.wrongPercentage);
 
   return (
-    <main className="protectedPage">
-      <header className="protectedPageHeader">
-        <div>
-          <h1>Desempenho</h1>
-          <p>Uma leitura ponderada das questões para orientar o próximo assunto de estudo.</p>
-        </div>
-        <Link className="primaryLink" href="/sessions/new">Nova sessão</Link>
-      </header>
-
-      <section className={styles.ledger} aria-label="Período e resumo do desempenho">
-        <div className={styles.filterRow}>
-          <div className={styles.filterGroup}>
-            <h2>Período</h2>
-            <nav className={styles.filters} aria-label="Filtrar período">
-              {(Object.entries(periodLabels) as [DashboardPeriod, string][]).map(([value, label]) => (
-                <Link
-                  key={value}
-                  href={{ pathname: "/dashboard", query: { period: value, today } }}
-                  aria-current={period === value ? "page" : undefined}
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <time className={styles.throughDate} dateTime={today}>
-            Até {today.slice(8, 10)}/{today.slice(5, 7)}/{today.slice(0, 4)}
-          </time>
-        </div>
-
-        <dl className={styles.summary}>
+    <>
+      <LocalTodayRedirect period={period} today={today} />
+      <main className="protectedPage">
+        <header className="protectedPageHeader">
           <div>
-            <dt>Questões</dt>
-            <dd>{data.overall.totalQuestions}</dd>
+            <h1>Desempenho</h1>
+            <p>Uma leitura ponderada das questões para orientar o próximo assunto de estudo.</p>
           </div>
-          <div className={styles.summaryCorrect}>
-            <dt>Acertos</dt>
-            <dd>{data.overall.correctAnswers}{" "}<span>{overallCorrect}</span></dd>
-          </div>
-          <div className={styles.summaryWrong}>
-            <dt>Erros</dt>
-            <dd>{data.overall.wrongAnswers}{" "}<span>{overallWrong}</span></dd>
-          </div>
-          <div>
-            <dt>Aproveitamento</dt>
-            <dd>{overallCorrect}{" "}<span>{data.overall.correctAnswers} de {data.overall.totalQuestions}</span></dd>
-          </div>
-        </dl>
-      </section>
+          <Link className="primaryLink" href="/sessions/new">Nova sessão</Link>
+        </header>
 
-      <PerformanceBars data={data} />
-    </main>
+        <section className={styles.ledger} aria-label="Período e resumo do desempenho">
+          <div className={styles.filterRow}>
+            <div className={styles.filterGroup}>
+              <h2>Período</h2>
+              <nav className={styles.filters} aria-label="Filtrar período">
+                {(Object.entries(periodLabels) as [DashboardPeriod, string][]).map(([value, label]) => (
+                  <Link
+                    key={value}
+                    href={{ pathname: "/dashboard", query: { period: value, today } }}
+                    aria-current={period === value ? "page" : undefined}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+            <time className={styles.throughDate} dateTime={today}>
+              Até {today.slice(8, 10)}/{today.slice(5, 7)}/{today.slice(0, 4)}
+            </time>
+          </div>
+
+          <dl className={styles.summary}>
+            <div>
+              <dt>Questões</dt>
+              <dd>{data.overall.totalQuestions}</dd>
+            </div>
+            <div className={styles.summaryCorrect}>
+              <dt>Acertos</dt>
+              <dd>{data.overall.correctAnswers}{" "}<span>{overallCorrect}</span></dd>
+            </div>
+            <div className={styles.summaryWrong}>
+              <dt>Erros</dt>
+              <dd>{data.overall.wrongAnswers}{" "}<span>{overallWrong}</span></dd>
+            </div>
+            <div>
+              <dt>Aproveitamento</dt>
+              <dd>{overallCorrect}{" "}<span>{data.overall.correctAnswers} de {data.overall.totalQuestions}</span></dd>
+            </div>
+          </dl>
+        </section>
+
+        <PerformanceBars data={data} />
+      </main>
+    </>
   );
 }

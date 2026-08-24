@@ -25,6 +25,24 @@ describe("dashboard period", () => {
   });
 
   it.each([
+    ["7d", "0001-01-07"],
+    ["30d", "0001-01-30"],
+    ["90d", "0001-03-31"],
+  ])("accepts the earliest PostgreSQL-safe %s window", (period, today) => {
+    expect(getPeriodStart(period as DashboardPeriod, today)).toBe("0001-01-01");
+  });
+
+  it.each([
+    ["7d", "0001-01-06"],
+    ["30d", "0001-01-29"],
+    ["90d", "0001-03-30"],
+  ])("rejects a %s window crossing PostgreSQL year zero", (period, today) => {
+    expect(() => getPeriodStart(period as DashboardPeriod, today)).toThrow(
+      "O período ultrapassa o limite mínimo de data.",
+    );
+  });
+
+  it.each([
     ["7d", "7d"],
     ["30d", "30d"],
     ["90d", "90d"],

@@ -44,9 +44,13 @@ export function getPeriodStart(period: DashboardPeriod, today: string): string |
   date.setUTCHours(0, 0, 0, 0);
   date.setUTCFullYear(year, month - 1, day - (periodDays[period] - 1));
 
-  return [
+  const startDate = [
     String(date.getUTCFullYear()).padStart(4, "0"),
     String(date.getUTCMonth() + 1).padStart(2, "0"),
     String(date.getUTCDate()).padStart(2, "0"),
   ].join("-");
+  if (!parseDashboardToday(startDate)) {
+    throw new Error("O período ultrapassa o limite mínimo de data.");
+  }
+  return startDate;
 }
