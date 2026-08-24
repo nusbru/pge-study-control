@@ -1,5 +1,11 @@
-import { expect, test } from "@playwright/test";
-import { createSession, registerAndLogin } from "./helpers";
+import { expect } from "@playwright/test";
+import {
+  controlledToday,
+  createSession,
+  freezePageClock,
+  registerAndLogin,
+  test,
+} from "./helpers";
 
 const countFields = {
   total: { name: "Total de questões", value: "50" },
@@ -11,7 +17,7 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await registerAndLogin(page, "complete-flow");
 
   await page.getByRole("link", { name: "Nova sessão" }).click();
-  await page.getByLabel("Data do estudo").fill("2026-08-24");
+  await page.getByLabel("Data do estudo").fill(controlledToday);
   await page.getByLabel("Assunto").fill("Direito Constitucional");
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill("50");
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill("30");
@@ -21,7 +27,8 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await expect(page).toHaveURL(/\/sessions$/);
   await expect(page.getByRole("heading", { name: "Direito Constitucional" })).toBeVisible();
 
-  await page.goto("/dashboard?period=30d&today=2026-08-24");
+  await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
+  await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
   const subjectPerformance = page.getByRole("listitem").filter({ hasText: "Direito Constitucional" });
   await expect(subjectPerformance).toContainText("60,0%");
   await expect(subjectPerformance).toContainText("30 acertos");
@@ -64,7 +71,7 @@ for (const scenario of [
 test("rejects inconsistent question counts without clearing entered values", async ({ page }) => {
   await registerAndLogin(page, "inconsistent-counts");
   await page.goto("/sessions/new");
-  await page.getByLabel("Data do estudo").fill("2026-08-24");
+  await page.getByLabel("Data do estudo").fill(controlledToday);
   await page.getByLabel("Assunto").fill("Direito Administrativo");
 
   const total = page.getByRole("spinbutton", { name: "Total de questões", exact: true });
@@ -91,7 +98,7 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
     contentType: "text/html",
   }));
   await createSession(page, {
-    studyDate: "2026-08-24",
+    studyDate: controlledToday,
     subject: "Recursos seguros",
     totalQuestions: "10",
     correctAnswers: "6",
@@ -109,6 +116,7 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
     await link.click();
     const popup = await popupPromise;
     await expect(popup).toHaveURL(url);
+    await popup.waitForLoadState();
     await popup.close();
   }
 });
@@ -116,19 +124,20 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
 test("dashboard period filters exclude old sessions", async ({ page }) => {
   await registerAndLogin(page, "dashboard-periods");
   await createSession(page, {
-    studyDate: "2026-08-24",
+    studyDate: controlledToday,
     subject: "Sessão atual",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
-    studyDate: "2026-07-01",
+    studyDate: "2025-03-01",
     subject: "Sessão antiga",
     totalQuestions: "20",
     correctAnswers: "10",
   });
 
-  await page.goto("/dashboard?period=30d&today=2026-08-24");
+  await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
+  await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
   await expect(page.getByRole("heading", { name: "Sessão atual" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sessão antiga" })).toHaveCount(0);
 
@@ -140,19 +149,20 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
 test("dashboard groups subjects after case and whitespace normalization", async ({ page }) => {
   await registerAndLogin(page, "dashboard-grouping");
   await createSession(page, {
-    studyDate: "2026-08-23",
+    studyDate: "2025-04-09",
     subject: "Direito Civil",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
-    studyDate: "2026-08-24",
+    studyDate: controlledToday,
     subject: "direito   civil",
     totalQuestions: "20",
     correctAnswers: "10",
   });
 
-  await page.goto("/dashboard?period=all&today=2026-08-24");
+  await page.goto(`/dashboard?period=all&today=${controlledToday}`);
+  await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
   const heading = page.getByRole("heading", { name: "direito civil", exact: true });
   await expect(heading).toHaveCount(1);
   const groupedSubject = page.getByRole("listitem").filter({ has: heading });
@@ -165,7 +175,7 @@ test("dashboard groups subjects after case and whitespace normalization", async 
 test("another authenticated user receives not found for an edit URL", async ({ page, browser }) => {
   await registerAndLogin(page, "session-owner");
   await createSession(page, {
-    studyDate: "2026-08-24",
+    studyDate: controlledToday,
     subject: "Sessão privada",
     totalQuestions: "10",
     correctAnswers: "7",
@@ -174,9 +184,19 @@ test("another authenticated user receives not found for an edit URL", async ({ p
     .getByRole("link", { name: "Editar" }).getAttribute("href");
   expect(editPath).not.toBeNull();
 
-  const secondContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  const secondContext = await browser.newContext();
   try {
     const secondPage = await secondContext.newPage();
+    await freezePageClock(secondPage);
+    expect(secondPage.viewportSize()).toEqual(page.viewportSize());
+    expect(await secondPage.evaluate(() => navigator.userAgent))
+      .toBe(await page.evaluate(() => navigator.userAgent));
+    expect(await secondPage.evaluate(() => navigator.maxTouchPoints))
+      .toBe(await page.evaluate(() => navigator.maxTouchPoints));
+    expect(await secondPage.evaluate(() => devicePixelRatio))
+      .toBe(await page.evaluate(() => devicePixelRatio));
+    expect(await secondPage.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone))
+      .toBe(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone));
     await registerAndLogin(secondPage, "different-user");
     const response = await secondPage.goto(editPath!);
     expect(response?.status()).toBe(404);

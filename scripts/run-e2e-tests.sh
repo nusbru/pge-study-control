@@ -12,4 +12,4 @@ printf 'SELECT 1 FROM "_prisma_migrations" LIMIT 1;\n' | npx prisma db execute -
 npx prisma db execute --stdin <<'SQL'
 TRUNCATE TABLE "study_sessions", "users" CASCADE;
 SQL
-npx playwright test "$@"
+PLAYWRIGHT_REUSE_EXISTING_SERVER=0 npx playwright test "$@"

@@ -3,6 +3,13 @@ import { defineConfig, devices } from "@playwright/test";
 const databaseUrl = "postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test";
 const authSecret = "test-only-auth-secret-at-least-32-characters";
 
+export function shouldReuseExistingServer(environment: {
+  CI?: string;
+  PLAYWRIGHT_REUSE_EXISTING_SERVER?: string;
+}) {
+  return !environment.CI && environment.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
+}
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -12,6 +19,7 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:3000",
     screenshot: "only-on-failure",
+    timezoneId: "America/Sao_Paulo",
     trace: "on-first-retry",
   },
   projects: [
@@ -30,7 +38,10 @@ export default defineConfig({
       AUTH_SECRET: authSecret,
       DATABASE_URL: databaseUrl,
     },
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: shouldReuseExistingServer({
+      CI: process.env.CI,
+      PLAYWRIGHT_REUSE_EXISTING_SERVER: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER,
+    }),
     url: "http://127.0.0.1:3000/login",
   },
 });

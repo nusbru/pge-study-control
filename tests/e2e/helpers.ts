@@ -1,7 +1,19 @@
 import crypto from "node:crypto";
-import { expect, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
 
 export const testPassword = "correct horse";
+export const controlledToday = "2025-04-10";
+
+export async function freezePageClock(page: Page) {
+  await page.clock.install({ time: new Date("2025-04-10T12:00:00-03:00") });
+}
+
+export const test = base.extend({
+  page: async ({ page }, run) => {
+    await freezePageClock(page);
+    await run(page);
+  },
+});
 
 export function uniqueEmail(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}@example.com`;
