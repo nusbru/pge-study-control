@@ -7,6 +7,10 @@ export type QuestionCountInput = {
 export type ResolvedQuestionCounts = Required<QuestionCountInput>;
 
 const COUNT_MAX = 1_000_000;
+const percentageFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 export function normalizeSubject(value: string) {
   const subject = value.trim().replace(/\s+/g, " ");
@@ -37,4 +41,8 @@ export function resolveQuestionCounts(input: QuestionCountInput): ResolvedQuesti
 export function percentage(part: number, total: number) {
   if (total <= 0) throw new Error("Não é possível calcular percentual com total zero.");
   return Math.round((part / total) * 1_000) / 10;
+}
+
+export function formatPercentage(value: number) {
+  return `${percentageFormatter.format(value)}%`;
 }

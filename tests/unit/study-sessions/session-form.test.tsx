@@ -25,8 +25,19 @@ describe("SessionForm", () => {
 
     expect(screen.getByLabelText("Erros")).toHaveValue(20);
     expect(screen.getByText("Calculado automaticamente")).toBeVisible();
-    expect(screen.getByText("60% de acertos")).toBeVisible();
-    expect(screen.getByText("40% de erros")).toBeVisible();
+    expect(screen.getByText("60,0% de acertos")).toBeVisible();
+    expect(screen.getByText("40,0% de erros")).toBeVisible();
+  });
+
+  it("formats fractional percentages with one decimal in Brazilian Portuguese", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.type(screen.getByLabelText("Total de questões"), "3");
+    await user.type(screen.getByLabelText("Acertos"), "2");
+
+    expect(screen.getByText("66,7% de acertos")).toBeVisible();
+    expect(screen.getByText("33,3% de erros")).toBeVisible();
   });
 
   it("calculates correct answers from total and errors", async () => {

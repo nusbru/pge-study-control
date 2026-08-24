@@ -4,7 +4,7 @@ import type { StudySession } from "@/generated/prisma/client";
 import Link from "next/link";
 import { useActionState } from "react";
 import { deleteSessionAction, type SessionActionState } from "./actions";
-import { percentage } from "./domain";
+import { formatPercentage, percentage } from "./domain";
 import styles from "./session-list.module.css";
 
 type SessionListProps = {
@@ -74,11 +74,11 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
               <dl className={styles.counts}>
                 <div>
                   <dt>Acertos</dt>
-                  <dd>{session.correctAnswers} ({percentage(session.correctAnswers, session.totalQuestions)}%)</dd>
+                  <dd>{session.correctAnswers} ({formatPercentage(percentage(session.correctAnswers, session.totalQuestions))})</dd>
                 </div>
                 <div>
                   <dt>Erros</dt>
-                  <dd>{session.wrongAnswers} ({percentage(session.wrongAnswers, session.totalQuestions)}%)</dd>
+                  <dd>{session.wrongAnswers} ({formatPercentage(percentage(session.wrongAnswers, session.totalQuestions))})</dd>
                 </div>
                 <div>
                   <dt>Total</dt>

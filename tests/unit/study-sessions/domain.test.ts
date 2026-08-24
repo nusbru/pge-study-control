@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSubject, percentage, resolveQuestionCounts } from "@/modules/study-sessions/domain";
+import {
+  formatPercentage,
+  normalizeSubject,
+  percentage,
+  resolveQuestionCounts,
+} from "@/modules/study-sessions/domain";
 
 describe("study-session domain", () => {
   it("normalizes case and repeated whitespace without losing display spelling", () => {
@@ -48,5 +53,12 @@ describe("study-session domain", () => {
 
   it("rounds percentages to one decimal place", () => {
     expect(percentage(2, 3)).toBe(66.7);
+  });
+
+  it.each([
+    [60, "60,0%"],
+    [66.7, "66,7%"],
+  ])("formats percentage %s for Brazilian Portuguese", (value, expected) => {
+    expect(formatPercentage(value)).toBe(expected);
   });
 });

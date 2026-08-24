@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
-import { percentage, resolveQuestionCounts } from "./domain";
+import { startTransition, useActionState, useEffect, useState } from "react";
+import { formatPercentage, percentage, resolveQuestionCounts } from "./domain";
 import type { SessionActionState } from "./actions";
 import styles from "./session-form.module.css";
 
@@ -24,7 +24,7 @@ export type SessionFormDefaults = {
 
 type SessionFormProps = {
   action: (previous: SessionActionState, formData: FormData) => Promise<SessionActionState>;
-  defaultStudyDate: string;
+  defaultStudyDate?: string;
   defaultValues?: SessionFormDefaults;
   submitLabel?: string;
 };
@@ -35,9 +35,9 @@ function toString(value: string | number | null | undefined) {
   return value === null || value === undefined ? "" : String(value);
 }
 
-function initialValues(defaultStudyDate: string, defaults: SessionFormDefaults = {}): FormValues {
+function initialValues(defaultStudyDate?: string, defaults: SessionFormDefaults = {}): FormValues {
   return {
-    studyDate: toString(defaults.studyDate) || defaultStudyDate,
+    studyDate: toString(defaults.studyDate) || defaultStudyDate || "",
     subject: toString(defaults.subject),
     totalQuestions: toString(defaults.totalQuestions),
     correctAnswers: toString(defaults.correctAnswers),
@@ -45,6 +45,14 @@ function initialValues(defaultStudyDate: string, defaults: SessionFormDefaults =
     questionListUrl: toString(defaults.questionListUrl),
     wrongQuestionListUrl: toString(defaults.wrongQuestionListUrl),
   };
+}
+
+function browserLocalDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function resolveCounts(values: Pick<FormValues, CountField>) {
@@ -77,6 +85,19 @@ export function SessionForm({
   const calculatedField = state.values !== undefined && state.values !== calculation.actionValues
     ? null
     : calculation.field;
+
+  useEffect(() => {
+    if (defaultStudyDate || defaultValues?.studyDate) return;
+
+    startTransition(() => {
+      setDraft((current) => current.values.studyDate
+        ? current
+        : {
+            ...current,
+            values: { ...current.values, studyDate: browserLocalDate() },
+          });
+    });
+  }, [defaultStudyDate, defaultValues?.studyDate]);
 
   function setValues(nextValues: FormValues) {
     setDraft({ actionValues: state.values, values: nextValues });
@@ -211,8 +232,8 @@ export function SessionForm({
         {countError && <p className={styles.countError} id="question-count-error" role="alert">{countError}</p>}
         {resolvedCounts && (
           <div className={styles.percentages} aria-label="Percentuais da sessão">
-            <span>{percentage(resolvedCounts.correctAnswers, resolvedCounts.totalQuestions)}% de acertos</span>
-            <span>{percentage(resolvedCounts.wrongAnswers, resolvedCounts.totalQuestions)}% de erros</span>
+            <span>{formatPercentage(percentage(resolvedCounts.correctAnswers, resolvedCounts.totalQuestions))} de acertos</span>
+            <span>{formatPercentage(percentage(resolvedCounts.wrongAnswers, resolvedCounts.totalQuestions))} de erros</span>
           </div>
         )}
       </fieldset>

@@ -2,14 +2,6 @@ import { createSessionAction } from "@/modules/study-sessions/actions";
 import { SessionForm } from "@/modules/study-sessions/session-form";
 import styles from "@/modules/study-sessions/session-form.module.css";
 
-function todayLocalDate() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default function NewSessionPage() {
   return (
     <main className={styles.page}>
@@ -18,7 +10,7 @@ export default function NewSessionPage() {
         <p>Registre os números enquanto o estudo ainda está fresco.</p>
       </header>
       <section className={styles.panel} aria-label="Dados da nova sessão">
-        <SessionForm action={createSessionAction} defaultStudyDate={todayLocalDate()} />
+        <SessionForm action={createSessionAction} />
       </section>
     </main>
   );
