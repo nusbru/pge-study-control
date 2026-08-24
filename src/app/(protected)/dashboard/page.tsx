@@ -4,7 +4,7 @@ import { LocalTodayRedirect } from "@/modules/dashboard/local-today-redirect";
 import { PerformanceBars } from "@/modules/dashboard/performance-bars";
 import {
   parseDashboardPeriod,
-  parseDashboardToday,
+  parseDashboardWindow,
   type DashboardPeriod,
 } from "@/modules/dashboard/period";
 import { getDashboard } from "@/modules/dashboard/queries";
@@ -29,7 +29,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const userId = await requireUserId();
   const { period: rawPeriod, today: rawToday } = await searchParams;
   const period = parseDashboardPeriod(rawPeriod);
-  const today = parseDashboardToday(rawToday);
+  const today = parseDashboardWindow(period, rawToday);
 
   if (!today) {
     return (

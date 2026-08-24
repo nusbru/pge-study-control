@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
+import type { DashboardPeriod } from "@/modules/dashboard/period";
 import { getDashboard } from "@/modules/dashboard/queries";
 
 describe("dashboard queries", () => {
@@ -229,6 +230,28 @@ describe("dashboard queries", () => {
       totalQuestions: 2_148_000_000,
       correctAnswers: 2_148_000_000,
       wrongAnswers: 0,
+    });
+  });
+
+  it.each([
+    ["7d", "0001-01-07"],
+    ["30d", "0001-01-30"],
+    ["90d", "0001-03-31"],
+    ["all", "0001-01-01"],
+  ])("queries the earliest supported %s window ending on %s", async (period, today) => {
+    const owner = await prisma.user.create({
+      data: { email: `dashboard-${period}@example.com`, passwordHash: "hash" },
+    });
+
+    await expect(
+      getDashboard(owner.id, period as DashboardPeriod, today),
+    ).resolves.toMatchObject({
+      overall: {
+        totalQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+      },
+      subjects: [],
     });
   });
 });

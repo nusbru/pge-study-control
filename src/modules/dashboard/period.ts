@@ -34,21 +34,37 @@ export function parseDashboardToday(value: unknown): string | null {
     : null;
 }
 
+function derivePeriodStart(
+  period: Exclude<DashboardPeriod, "all">,
+  today: string,
+): string {
+  const [year, month, day] = today.split("-").map(Number);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day - (periodDays[period] - 1));
+
+  return [
+    String(date.getUTCFullYear()).padStart(4, "0"),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+export function parseDashboardWindow(
+  period: DashboardPeriod,
+  value: unknown,
+): string | null {
+  const today = parseDashboardToday(value);
+  if (!today || period === "all") return today;
+  return parseDashboardToday(derivePeriodStart(period, today)) ? today : null;
+}
+
 export function getPeriodStart(period: DashboardPeriod, today: string): string | null {
   if (period === "all") return null;
   const validToday = parseDashboardToday(today);
   if (!validToday) throw new Error("Data de referência inválida.");
 
-  const [year, month, day] = validToday.split("-").map(Number);
-  const date = new Date(0);
-  date.setUTCHours(0, 0, 0, 0);
-  date.setUTCFullYear(year, month - 1, day - (periodDays[period] - 1));
-
-  const startDate = [
-    String(date.getUTCFullYear()).padStart(4, "0"),
-    String(date.getUTCMonth() + 1).padStart(2, "0"),
-    String(date.getUTCDate()).padStart(2, "0"),
-  ].join("-");
+  const startDate = derivePeriodStart(period, validToday);
   if (!parseDashboardToday(startDate)) {
     throw new Error("O período ultrapassa o limite mínimo de data.");
   }
