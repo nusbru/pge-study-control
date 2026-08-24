@@ -74,6 +74,7 @@ export function SessionForm({
     actionValues: undefined as Record<string, string> | undefined,
     values: initialValues(defaultStudyDate, defaultValues),
   }));
+  const [dateReady, setDateReady] = useState(() => Boolean(defaultStudyDate || defaultValues?.studyDate));
   const [calculation, setCalculation] = useState(() => ({
     actionValues: undefined as Record<string, string> | undefined,
     field: null as CountField | null,
@@ -96,6 +97,7 @@ export function SessionForm({
             ...current,
             values: { ...current.values, studyDate: browserLocalDate() },
           });
+      setDateReady(true);
     });
   }, [defaultStudyDate, defaultValues?.studyDate]);
 
@@ -273,7 +275,9 @@ export function SessionForm({
       </fieldset>
 
       <div className={styles.actions}>
-        <button type="submit" disabled={pending}>{pending ? "Salvando..." : submitLabel}</button>
+        <button type="submit" disabled={pending || !dateReady}>
+          {pending ? "Salvando..." : dateReady ? submitLabel : "Preparando data..."}
+        </button>
         <Link href="/sessions">Cancelar</Link>
       </div>
     </form>

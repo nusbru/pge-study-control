@@ -32,7 +32,10 @@ describe("new-session local date", () => {
     container.innerHTML = serverHtml;
     document.body.append(container);
     const serverDateInput = container.querySelector<HTMLInputElement>('input[name="studyDate"]');
+    const serverSubmit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(serverDateInput).toHaveAttribute("value", "");
+    expect(serverSubmit).toBeDisabled();
+    expect(serverSubmit).toHaveTextContent("Preparando data...");
 
     process.env.TZ = "America/Los_Angeles";
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -42,7 +45,10 @@ describe("new-session local date", () => {
     });
 
     const dateInput = container.querySelector<HTMLInputElement>('input[name="studyDate"]');
+    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(dateInput).toHaveValue("2026-08-23");
+    expect(submit).toBeEnabled();
+    expect(submit).toHaveTextContent("Salvar sessão");
     expect(consoleError.mock.calls.flat().join(" ").toLowerCase()).not.toContain("hydrat");
 
     await act(async () => root.unmount());
@@ -64,6 +70,9 @@ describe("new-session local date", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(renderEditForm());
     document.body.append(container);
+    const serverSubmit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(serverSubmit).toBeEnabled();
+    expect(serverSubmit).toHaveTextContent("Salvar sessão");
 
     let root!: Root;
     await act(async () => {
@@ -71,6 +80,7 @@ describe("new-session local date", () => {
     });
 
     expect(container.querySelector('input[name="studyDate"]')).toHaveValue("2026-08-24");
+    expect(container.querySelector('button[type="submit"]')).toBeEnabled();
 
     await act(async () => root.unmount());
     container.remove();
