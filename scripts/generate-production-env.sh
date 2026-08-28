@@ -4,14 +4,19 @@ set -eu
 unset db_password auth_secret
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-TEMPLATE_FILE=${1:-"$ROOT_DIR/.env.example"}
-OUTPUT_FILE=${2:-"$ROOT_DIR/.env"}
-VALIDATOR="$ROOT_DIR/scripts/validate-production-env.sh"
 
 fail() {
   printf '%s\n' "$1" >&2
   exit 1
 }
+
+TEMPLATE_FILE=${1:-"$ROOT_DIR/.env.example"}
+OUTPUT_FILE=${2:-"$ROOT_DIR/.env"}
+VALIDATOR="$ROOT_DIR/scripts/validate-production-env.sh"
+
+case $OUTPUT_FILE in
+  -*) fail 'Caminho do arquivo de saida nao pode iniciar com hifen' ;;
+esac
 
 if [ -e "$OUTPUT_FILE" ] || [ -L "$OUTPUT_FILE" ]; then
   fail "O arquivo de ambiente ja existe: $OUTPUT_FILE"
@@ -24,9 +29,6 @@ case $OUTPUT_FILE in
 esac
 output_name=${OUTPUT_FILE##*/}
 [ -n "$output_name" ] || fail 'Caminho de saida invalido'
-case $output_name in
-  -*) fail 'Nome do arquivo de saida nao pode iniciar com hifen' ;;
-esac
 [ -d "$output_directory" ] || fail "Diretorio de saida nao encontrado: $output_directory"
 
 umask 077

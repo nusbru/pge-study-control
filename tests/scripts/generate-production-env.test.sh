@@ -140,26 +140,58 @@ case $failure_output in
 esac
 
 OPTION_OUTPUT_DIR="$TMP_DIR/option-output"
-mkdir "$OPTION_OUTPUT_DIR" "$OPTION_OUTPUT_DIR/other"
+OPTION_FAKE_BIN="$TMP_DIR/option-bin"
+mkdir "$OPTION_OUTPUT_DIR" "$OPTION_OUTPUT_DIR/other" \
+  "$OPTION_OUTPUT_DIR/--tmpdir=other" "$OPTION_FAKE_BIN"
+cat > "$OPTION_FAKE_BIN/mktemp" <<'SH'
+#!/bin/sh
+set -eu
+printf '%s\n' invoked > "$FAKE_MKTEMP_STATE"
+exit 70
+SH
+chmod 755 "$OPTION_FAKE_BIN/mktemp"
 set +e
 (
   cd "$OPTION_OUTPUT_DIR"
-  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-option.state" PATH="$FAKE_BIN:$PATH" \
+  FAKE_MKTEMP_STATE="$TMP_DIR/mktemp-bare-option.state" \
+  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-bare-option.state" \
+  PATH="$OPTION_FAKE_BIN:$FAKE_BIN:$PATH" \
     "$GENERATOR" "$TEMPLATE" --target-directory=other \
-    >"$TMP_DIR/option.out" 2>"$TMP_DIR/option.err"
+    >"$TMP_DIR/bare-option.out" 2>"$TMP_DIR/bare-option.err"
 )
 option_status=$?
 set -e
-[ "$option_status" -ne 0 ] || fail 'gerador aceitou basename de saida iniciado por hifen'
+[ "$option_status" -ne 0 ] || fail 'gerador aceitou caminho de saida iniciado por hifen'
 [ ! -e "$OPTION_OUTPUT_DIR/--target-directory=other" ] || fail 'basename invalido criou arquivo de saida'
-for unexpected_file in \
-  "$OPTION_OUTPUT_DIR/other"/* \
-  "$OPTION_OUTPUT_DIR/other"/.[!.]* \
-  "$OPTION_OUTPUT_DIR/other"/..?*; do
-  if [ -e "$unexpected_file" ] || [ -L "$unexpected_file" ]; then
-    fail 'basename invalido instalou arquivo fora do destino solicitado'
-  fi
-done
-assert_no_temporary_output "$OPTION_OUTPUT_DIR" --target-directory=other
+[ ! -e "$TMP_DIR/mktemp-bare-option.state" ] || fail 'caminho invalido alcancou mktemp'
+[ ! -e "$TMP_DIR/openssl-bare-option.state" ] || fail 'caminho invalido gerou segredo'
+
+set +e
+(
+  cd "$OPTION_OUTPUT_DIR"
+  FAKE_MKTEMP_STATE="$TMP_DIR/mktemp-nested-option.state" \
+  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-nested-option.state" \
+  PATH="$OPTION_FAKE_BIN:$FAKE_BIN:$PATH" \
+    "$GENERATOR" "$TEMPLATE" --tmpdir=other/generated.env \
+    >"$TMP_DIR/nested-option.out" 2>"$TMP_DIR/nested-option.err"
+)
+option_status=$?
+set -e
+[ "$option_status" -ne 0 ] || fail 'gerador aceitou caminho de saida aninhado iniciado por hifen'
+[ ! -e "$TMP_DIR/mktemp-nested-option.state" ] || fail 'caminho aninhado invalido alcancou mktemp'
+[ ! -e "$TMP_DIR/openssl-nested-option.state" ] || fail 'caminho aninhado invalido gerou segredo'
+
+unexpected_path=$(find "$OPTION_OUTPUT_DIR" -mindepth 1 ! -type d -print -quit)
+[ -z "$unexpected_path" ] || fail "caminho invalido deixou residuo: $unexpected_path"
+
+SAFE_HYPHEN_ENV="$OPTION_OUTPUT_DIR/-generated.env"
+(
+  cd "$OPTION_OUTPUT_DIR"
+  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-safe-hyphen.state" PATH="$FAKE_BIN:$PATH" \
+    "$GENERATOR" "$TEMPLATE" ./-generated.env \
+    >"$TMP_DIR/safe-hyphen.out" 2>"$TMP_DIR/safe-hyphen.err"
+)
+[ -f "$SAFE_HYPHEN_ENV" ] || fail 'gerador rejeitou caminho explicito seguro iniciado por ./-'
+assert_no_temporary_output "$OPTION_OUTPUT_DIR" -generated.env
 
 printf '%s\n' 'PASS: gera, protege, valida e instala o ambiente sem expor segredos'
