@@ -4,20 +4,30 @@ Execute os comandos a partir da raiz do repositorio. O host precisa de Docker En
 
 ## Preparar o ambiente
 
-Crie o arquivo local, gere valores aleatorios URL-safe e substitua todos os marcadores. A senha do PostgreSQL deve ser identica em `POSTGRES_PASSWORD` e na parte correspondente de `DATABASE_URL`.
+Crie o arquivo local com modo `600`, gere valores hexadecimais aleatorios de 64 caracteres e substitua todos os marcadores. A senha do PostgreSQL deve ser identica em `POSTGRES_PASSWORD` e na parte correspondente de `DATABASE_URL`.
 
 ```sh
 set -eu
+umask 077
 cp .env.example .env
+chmod 600 .env
 DB_PASSWORD="$(openssl rand -hex 32)"
 AUTH_SECRET_VALUE="$(openssl rand -hex 32)"
-sed -i "s/CHANGE_ME_RANDOM_DATABASE_PASSWORD/$DB_PASSWORD/g" .env
-sed -i "s/CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32/$AUTH_SECRET_VALUE/g" .env
+ENV_TMP="$(mktemp .env.tmp.XXXXXX)"
+trap 'rm -f "$ENV_TMP"' 0 HUP INT TERM
+sed \
+  -e "s/CHANGE_ME_RANDOM_DATABASE_PASSWORD/$DB_PASSWORD/g" \
+  -e "s/CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32/$AUTH_SECRET_VALUE/g" \
+  .env > "$ENV_TMP"
+chmod 600 "$ENV_TMP"
+mv "$ENV_TMP" .env
+trap - 0 HUP INT TERM
+unset ENV_TMP
 unset DB_PASSWORD AUTH_SECRET_VALUE
 ./scripts/validate-production-env.sh .env
 ```
 
-O validador interrompe a sequencia se algum marcador permanecer. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
+O validador aceita comentarios que mencionem `CHANGE_ME`, mas interrompe a sequencia se um valor ainda contiver o marcador, se as seis atribuicoes obrigatorias estiverem ausentes, vazias, duplicadas ou malformadas, se os segredos nao tiverem 64 caracteres hexadecimais, se os nomes do banco e usuario forem inseguros, se `DATABASE_URL` divergir ou se `APP_PORT` nao estiver entre 1 e 65535. Ele le o arquivo como dados, sem carrega-lo no shell ou imprimir seus valores. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
 
 ## Primeira inicializacao
 
