@@ -27,6 +27,7 @@ export async function listSessions(userId: string, page: number) {
       orderBy: [
         { studyDate: "desc" },
         { createdAt: "desc" },
+        { id: "desc" },
       ],
     }),
     prisma.studySession.count({ where: { userId } }),

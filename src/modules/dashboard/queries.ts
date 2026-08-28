@@ -19,7 +19,13 @@ export type DashboardSubject = {
 };
 
 export type DashboardData = {
-  overall: Omit<DashboardSubject, "subject" | "subjectKey">;
+  overall: Omit<
+    DashboardSubject,
+    "subject" | "subjectKey" | "correctPercentage" | "wrongPercentage"
+  > & {
+    correctPercentage: number | null;
+    wrongPercentage: number | null;
+  };
   subjects: DashboardSubject[];
 };
 
@@ -54,7 +60,7 @@ export async function getDashboard(
   const startDate = getPeriodStart(period, validToday);
   const dateFilter = startDate
     ? Prisma.sql`AND study_date BETWEEN ${startDate}::date AND ${validToday}::date`
-    : Prisma.empty;
+    : Prisma.sql`AND study_date <= ${validToday}::date`;
   const rows = await prisma.$queryRaw<DashboardRow[]>(Prisma.sql`
     WITH filtered AS (
       SELECT * FROM study_sessions
@@ -97,7 +103,15 @@ export async function getDashboard(
   const wrongAnswers = bigintToSafeInteger(overallRow.overall_wrong_answers);
 
   return {
-    overall: addPercentages(totalQuestions, correctAnswers, wrongAnswers),
+    overall: totalQuestions > 0
+      ? addPercentages(totalQuestions, correctAnswers, wrongAnswers)
+      : {
+          totalQuestions,
+          correctAnswers,
+          wrongAnswers,
+          correctPercentage: null,
+          wrongPercentage: null,
+        },
     subjects: rows.flatMap((row) => {
       if (
         row.subject === null

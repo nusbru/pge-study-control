@@ -26,7 +26,10 @@ const optionalHttpUrl = z.preprocess(
 function isCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
+  if (year === 0) return false;
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
@@ -41,10 +44,22 @@ const rawStudySessionSchema = z.object({
 }, { error: "Dados inválidos." });
 
 export const studySessionInputSchema = rawStudySessionSchema.transform((data, context) => {
+  let normalizedSubject: ReturnType<typeof normalizeSubject>;
+  try {
+    normalizedSubject = normalizeSubject(data.subject);
+  } catch (error) {
+    context.addIssue({
+      code: "custom",
+      path: ["subject"],
+      message: error instanceof Error ? error.message : SUBJECT_ERROR,
+    });
+    return z.NEVER;
+  }
+
   try {
     return {
       studyDate: data.studyDate,
-      ...normalizeSubject(data.subject),
+      ...normalizedSubject,
       ...resolveQuestionCounts({
         totalQuestions: data.totalQuestions,
         correctAnswers: data.correctAnswers,

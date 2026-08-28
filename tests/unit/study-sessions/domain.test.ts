@@ -14,6 +14,16 @@ describe("study-session domain", () => {
     });
   });
 
+  it("keeps a 120-character subject when lowercase normalization expands its key", () => {
+    const subject = "İ".repeat(120);
+
+    const normalized = normalizeSubject(subject);
+
+    expect(normalized.subject).toHaveLength(120);
+    expect(normalized.subjectKey).toBe("i̇".repeat(120));
+    expect([...normalized.subjectKey]).toHaveLength(240);
+  });
+
   it.each([
     [{ totalQuestions: 50, correctAnswers: 30 }, { totalQuestions: 50, correctAnswers: 30, wrongAnswers: 20 }],
     [{ correctAnswers: 30, wrongAnswers: 20 }, { totalQuestions: 50, correctAnswers: 30, wrongAnswers: 20 }],

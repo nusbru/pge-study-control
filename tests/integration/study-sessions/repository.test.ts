@@ -81,7 +81,7 @@ describe("study session repository", () => {
     await expect(getSession(owner.id, session.id)).resolves.toBeNull();
   });
 
-  it("paginates only the user's sessions by study date and creation time", async () => {
+  it("paginates only the user's sessions by study date, creation time, and ID", async () => {
     const [owner, stranger] = await Promise.all([
       prisma.user.create({ data: { email: "owner@example.com", passwordHash: "hash" } }),
       prisma.user.create({ data: { email: "stranger@example.com", passwordHash: "hash" } }),
@@ -116,23 +116,23 @@ describe("study session repository", () => {
       data: [
         ...dailySessions,
         {
-          id: "same-date-old",
+          id: "same-date-a",
           userId: owner.id,
           studyDate: new Date("2026-08-20T00:00:00.000Z"),
-          createdAt: new Date("2026-08-20T01:00:00.000Z"),
-          subject: "Mais antigo",
-          subjectKey: "mais antigo",
+          createdAt: new Date("2026-08-20T02:00:00.000Z"),
+          subject: "Empate A",
+          subjectKey: "empate a",
           totalQuestions: 10,
           correctAnswers: 7,
           wrongAnswers: 3,
         },
         {
-          id: "same-date-new",
+          id: "same-date-z",
           userId: owner.id,
           studyDate: new Date("2026-08-20T00:00:00.000Z"),
           createdAt: new Date("2026-08-20T02:00:00.000Z"),
-          subject: "Mais novo",
-          subjectKey: "mais novo",
+          subject: "Empate Z",
+          subjectKey: "empate z",
           totalQuestions: 10,
           correctAnswers: 7,
           wrongAnswers: 3,
@@ -147,8 +147,8 @@ describe("study session repository", () => {
     expect(firstPage.totalPages).toBe(2);
     expect(firstPage.records).toHaveLength(20);
     expect(firstPage.records.slice(0, 2).map(({ id }) => id)).toEqual([
-      "same-date-new",
-      "same-date-old",
+      "same-date-z",
+      "same-date-a",
     ]);
     expect(secondPage).toMatchObject({ totalPages: 2 });
     expect(secondPage.records.map(({ id }) => id)).toEqual(["owner-day-01"]);

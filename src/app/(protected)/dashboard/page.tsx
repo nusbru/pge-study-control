@@ -46,8 +46,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const data = await getDashboard(userId, period, today);
-  const overallCorrect = formatPercentage(data.overall.correctPercentage);
-  const overallWrong = formatPercentage(data.overall.wrongPercentage);
+  const overallCorrect = data.overall.correctPercentage === null
+    ? null
+    : formatPercentage(data.overall.correctPercentage);
+  const overallWrong = data.overall.wrongPercentage === null
+    ? null
+    : formatPercentage(data.overall.wrongPercentage);
 
   return (
     <>
@@ -89,15 +93,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
             <div className={styles.summaryCorrect}>
               <dt>Acertos</dt>
-              <dd>{data.overall.correctAnswers}{" "}<span>{overallCorrect}</span></dd>
+              <dd>
+                {data.overall.correctAnswers}
+                {overallCorrect && <>{" "}<span>{overallCorrect}</span></>}
+              </dd>
             </div>
             <div className={styles.summaryWrong}>
               <dt>Erros</dt>
-              <dd>{data.overall.wrongAnswers}{" "}<span>{overallWrong}</span></dd>
+              <dd>
+                {data.overall.wrongAnswers}
+                {overallWrong && <>{" "}<span>{overallWrong}</span></>}
+              </dd>
             </div>
             <div>
               <dt>Aproveitamento</dt>
-              <dd>{overallCorrect}{" "}<span>{data.overall.correctAnswers} de {data.overall.totalQuestions}</span></dd>
+              <dd>
+                {overallCorrect === null
+                  ? <>Não disponível <span>Sem questões no período</span></>
+                  : <>{overallCorrect}{" "}<span>{data.overall.correctAnswers} de {data.overall.totalQuestions}</span></>}
+              </dd>
             </div>
           </dl>
         </section>

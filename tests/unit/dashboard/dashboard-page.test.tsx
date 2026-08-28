@@ -60,6 +60,31 @@ describe("DashboardPage", () => {
     );
   });
 
+  it("renders empty counts without inventing percentages for zero questions", async () => {
+    mocks.getDashboard.mockResolvedValueOnce({
+      overall: {
+        totalQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        correctPercentage: null,
+        wrongPercentage: null,
+      },
+      subjects: [],
+    });
+    const page = await DashboardPage({
+      searchParams: Promise.resolve({ period: "30d", today: "2026-08-24" }),
+    });
+
+    render(page);
+
+    expect(screen.getByText("Acertos").nextElementSibling).toHaveTextContent("0");
+    expect(screen.getByText("Erros").nextElementSibling).toHaveTextContent("0");
+    expect(screen.queryByText("0,0%")).not.toBeInTheDocument();
+    expect(screen.getByText("Aproveitamento").nextElementSibling).toHaveTextContent(
+      "Não disponível Sem questões no período",
+    );
+  });
+
   it("reconciles a valid stale query date from the rendered dashboard", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T12:00:00.000Z"));

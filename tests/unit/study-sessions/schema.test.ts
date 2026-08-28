@@ -41,6 +41,25 @@ describe("studySessionInputSchema", () => {
     expectFieldError({ ...valid, studyDate: "2026-02-31" }, "studyDate", "Informe uma data válida.");
   });
 
+  it("accepts year 0001 without remapping it to 1901", () => {
+    expect(studySessionInputSchema.safeParse({ ...valid, studyDate: "0001-01-01" }).success).toBe(true);
+  });
+
+  it.each(["0000-01-01", "0001-02-29"])("rejects unsupported ancient date %s", (studyDate) => {
+    expectFieldError({ ...valid, studyDate }, "studyDate", "Informe uma data válida.");
+  });
+
+  it.each(["   ", `  ${"a".repeat(121)}  `])(
+    "attaches normalized subject error for %j to the subject field",
+    (subject) => {
+      expectFieldError(
+        { ...valid, subject },
+        "subject",
+        "Informe um assunto com até 120 caracteres.",
+      );
+    },
+  );
+
   it.each(["não-numérico", "1.5", "-1", "1000001"])(
     "rejects count value %s with a Portuguese field error",
     (totalQuestions) => {
@@ -72,6 +91,7 @@ describe("studySessionInputSchema", () => {
     expect(result.success).toBe(false);
     if (result.success) throw new Error("A validação deveria falhar.");
     expect(result.error.issues).toContainEqual(expect.objectContaining({
+      path: [],
       message: "Use números inteiros entre 0 e 1.000.000.",
     }));
   });

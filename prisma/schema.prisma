@@ -23,7 +23,7 @@ model StudySession {
   userId               String   @map("user_id")
   studyDate            DateTime @map("study_date") @db.Date
   subject              String   @db.VarChar(120)
-  subjectKey           String   @map("subject_key") @db.VarChar(120)
+  subjectKey           String   @map("subject_key") @db.VarChar(240)
   totalQuestions       Int      @map("total_questions")
   correctAnswers       Int      @map("correct_answers")
   wrongAnswers         Int      @map("wrong_answers")

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import type { DashboardPeriod } from "@/modules/dashboard/period";
 import { getDashboard } from "@/modules/dashboard/queries";
+import { listSessions, createSession } from "@/modules/study-sessions/repository";
+import { studySessionInputSchema } from "@/modules/study-sessions/schema";
 
 describe("dashboard queries", () => {
   beforeEach(async () => {
@@ -90,7 +92,7 @@ describe("dashboard queries", () => {
     });
   });
 
-  it("keeps all history unbounded, including future records, and orders by volume", async () => {
+  it("keeps all history through today, excludes future records, and orders by volume", async () => {
     const owner = await prisma.user.create({
       data: { email: "dashboard-order@example.com", passwordHash: "hash" },
     });
@@ -129,16 +131,66 @@ describe("dashboard queries", () => {
     const dashboard = await getDashboard(owner.id, "all", "2026-08-23");
 
     expect(dashboard.subjects.map(({ subject }) => subject)).toEqual([
-      "Direito Futuro",
       "Direito Penal",
       "Direito Civil",
     ]);
     expect(dashboard.overall).toMatchObject({
-      totalQuestions: 55,
-      correctAnswers: 28,
-      wrongAnswers: 27,
-      correctPercentage: 50.9,
-      wrongPercentage: 49.1,
+      totalQuestions: 25,
+      correctAnswers: 13,
+      wrongAnswers: 12,
+      correctPercentage: 52,
+      wrongPercentage: 48,
+    });
+  });
+
+  it("returns unavailable overall percentages when the period has no questions", async () => {
+    const owner = await prisma.user.create({
+      data: { email: "dashboard-empty@example.com", passwordHash: "hash" },
+    });
+
+    await expect(getDashboard(owner.id, "30d", "2026-08-23")).resolves.toEqual({
+      overall: {
+        totalQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        correctPercentage: null,
+        wrongPercentage: null,
+      },
+      subjects: [],
+    });
+  });
+
+  it("creates, lists, and aggregates a valid subject whose lowercase key expands", async () => {
+    const owner = await prisma.user.create({
+      data: { email: "dashboard-unicode@example.com", passwordHash: "hash" },
+    });
+    const subject = "İ".repeat(120);
+    const input = studySessionInputSchema.parse({
+      studyDate: "2026-08-23",
+      subject,
+      totalQuestions: "10",
+      correctAnswers: "7",
+      wrongAnswers: "3",
+      questionListUrl: "",
+      wrongQuestionListUrl: "",
+    });
+
+    await createSession(owner.id, input);
+    const history = await listSessions(owner.id, 1);
+    const dashboard = await getDashboard(owner.id, "all", "2026-08-23");
+
+    expect(history.records[0]).toMatchObject({ subject, subjectKey: "i̇".repeat(120) });
+    expect(dashboard.overall).toMatchObject({
+      totalQuestions: 10,
+      correctAnswers: 7,
+      wrongAnswers: 3,
+      correctPercentage: 70,
+      wrongPercentage: 30,
+    });
+    expect(dashboard.subjects[0]).toMatchObject({
+      subject,
+      subjectKey: "i̇".repeat(120),
+      totalQuestions: 10,
     });
   });
 
