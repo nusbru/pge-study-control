@@ -7,21 +7,17 @@ Execute os comandos a partir da raiz do repositorio. O host precisa de Docker En
 Crie o arquivo local, gere valores aleatorios URL-safe e substitua todos os marcadores. A senha do PostgreSQL deve ser identica em `POSTGRES_PASSWORD` e na parte correspondente de `DATABASE_URL`.
 
 ```sh
+set -eu
 cp .env.example .env
 DB_PASSWORD="$(openssl rand -hex 32)"
 AUTH_SECRET_VALUE="$(openssl rand -hex 32)"
 sed -i "s/CHANGE_ME_RANDOM_DATABASE_PASSWORD/$DB_PASSWORD/g" .env
-sed -i "s/CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32/$AUTH_SECRET_VALUE/" .env
+sed -i "s/CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32/$AUTH_SECRET_VALUE/g" .env
 unset DB_PASSWORD AUTH_SECRET_VALUE
+./scripts/validate-production-env.sh .env
 ```
 
-Confirme que nenhum marcador ficou no arquivo e revise `APP_PORT`:
-
-```sh
-if grep -q 'CHANGE_ME' .env; then printf '%s\n' 'Substitua todos os valores CHANGE_ME em .env' >&2; exit 1; fi
-```
-
-O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem ou compartilhado.
+O validador interrompe a sequencia se algum marcador permanecer. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
 
 ## Primeira inicializacao
 
@@ -36,11 +32,11 @@ docker compose up -d --wait
 O PostgreSQL precisa ficar saudavel antes da migracao. O servico `migrate` deve terminar com codigo 0 antes de `app` iniciar.
 
 ```sh
-docker compose ps
-curl --fail --show-error http://127.0.0.1:3000/api/health
+docker compose ps --all
+docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
 ```
 
-A resposta esperada e `{"status":"ok"}`. Um `503` com `{"status":"unavailable"}` indica que a aplicacao nao conseguiu consultar o PostgreSQL; detalhes permanecem apenas no log do servidor.
+A resposta esperada e `{"status":"ok"}`. A URL externa e `http://127.0.0.1:<APP_PORT>/api/health`, com `<APP_PORT>` igual ao valor configurado em `.env`; o comando acima usa a porta interna do container e funciona para qualquer `APP_PORT`. Um `503` com `{"status":"unavailable"}` indica que a aplicacao nao conseguiu consultar o PostgreSQL; detalhes permanecem apenas no log do servidor.
 
 ## Logs
 
@@ -64,8 +60,8 @@ Antes de atualizar, faca backup. Depois obtenha apenas avancos da branch implant
 git pull --ff-only
 docker compose build --pull
 docker compose up -d --wait --remove-orphans
-docker compose ps
-curl --fail --show-error http://127.0.0.1:3000/api/health
+docker compose ps --all
+docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
 ```
 
 ## Backup e restauracao
@@ -78,13 +74,34 @@ docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > b
 
 Verifique se `backup.sql` existe e nao esta vazio antes de depender dele. Guarde-o criptografado, teste restauracoes periodicamente e aplique uma politica externa de retencao.
 
-O comando abaixo pressupoe um banco realmente vazio. Nao restaure este dump sobre tabelas existentes: isso pode falhar por objetos ou dados duplicados. Pare `app` e restaure em um banco novo/vazio antes de liberar trafego.
+O fluxo abaixo para `app`, recria explicitamente o banco vazio pelo banco de manutencao `postgres`, restaura com parada no primeiro erro e executa novamente o migrador. `dropdb --force` encerra conexoes ativas ao banco alvo. Se qualquer etapa, inclusive o health check final, falhar, o trap mantem `app` parado.
 
 ```sh
+set -eu
+restore_cleanup() {
+  restore_status=$?
+  trap - 0 HUP INT TERM
+  if [ "$restore_status" -ne 0 ]; then
+    docker compose stop app >/dev/null 2>&1 || :
+  fi
+  exit "$restore_status"
+}
+trap restore_cleanup 0 HUP INT TERM
+
 docker compose stop app
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"' < backup.sql
-docker compose start app
-docker compose ps
+test -s backup.sql
+docker compose exec -T db sh -eu -c '
+  dropdb --force --if-exists --maintenance-db=postgres -U "$POSTGRES_USER" "$POSTGRES_DB"
+  createdb --maintenance-db=postgres -U "$POSTGRES_USER" "$POSTGRES_DB"
+'
+docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup.sql
+docker compose rm --force --stop migrate
+docker compose up --no-deps --abort-on-container-exit --exit-code-from migrate migrate
+docker compose up -d --wait app
+docker compose ps --all
+docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
+
+trap - 0 HUP INT TERM
 ```
 
 ## Encerrar
