@@ -34,7 +34,7 @@ O validador aceita comentarios que mencionem `CHANGE_ME`, mas interrompe a seque
 Valide a interpolacao, construa os alvos `migrator` e `runner` e inicie a pilha:
 
 ```sh
-docker compose config
+docker compose config --quiet
 docker compose build
 docker compose up -d --wait
 ```
