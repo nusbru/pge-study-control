@@ -4,30 +4,13 @@ Execute os comandos a partir da raiz do repositorio. O host precisa de Docker En
 
 ## Preparar o ambiente
 
-Crie o arquivo local com modo `600`, gere valores hexadecimais aleatorios de 64 caracteres e substitua todos os marcadores. A senha do PostgreSQL deve ser identica em `POSTGRES_PASSWORD` e na parte correspondente de `DATABASE_URL`.
+Gere o arquivo local com modo `600`, valores hexadecimais aleatorios de 64 caracteres e correspondencia garantida entre `POSTGRES_PASSWORD` e `DATABASE_URL`:
 
 ```sh
-set -eu
-umask 077
-cp .env.example .env
-chmod 600 .env
-DB_PASSWORD="$(openssl rand -hex 32)"
-AUTH_SECRET_VALUE="$(openssl rand -hex 32)"
-ENV_TMP="$(mktemp .env.tmp.XXXXXX)"
-trap 'rm -f "$ENV_TMP"' 0 HUP INT TERM
-sed \
-  -e "s/CHANGE_ME_RANDOM_DATABASE_PASSWORD/$DB_PASSWORD/g" \
-  -e "s/CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32/$AUTH_SECRET_VALUE/g" \
-  .env > "$ENV_TMP"
-chmod 600 "$ENV_TMP"
-mv "$ENV_TMP" .env
-trap - 0 HUP INT TERM
-unset ENV_TMP
-unset DB_PASSWORD AUTH_SECRET_VALUE
-./scripts/validate-production-env.sh .env
+./scripts/generate-production-env.sh
 ```
 
-O validador aceita comentarios que mencionem `CHANGE_ME`, mas interrompe a sequencia se um valor ainda contiver o marcador, se as seis atribuicoes obrigatorias estiverem ausentes, vazias, duplicadas ou malformadas, se os segredos nao tiverem 64 caracteres hexadecimais, se os nomes do banco e usuario forem inseguros, se `DATABASE_URL` divergir ou se `APP_PORT` nao estiver entre 1 e 65535. Ele le o arquivo como dados, sem carrega-lo no shell ou imprimir seus valores. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
+O gerador recusa qualquer `.env` existente, gera os segredos internamente, valida um arquivo temporario no mesmo diretorio e o instala atomicamente sem expor segredos em argumentos de processos filhos. Em falhas, remove o temporario. O validador aceita comentarios que mencionem `CHANGE_ME`, mas interrompe a sequencia se um valor ainda contiver o marcador, se as seis atribuicoes obrigatorias estiverem ausentes, vazias, duplicadas ou malformadas, se os segredos nao tiverem 64 caracteres hexadecimais, se os nomes do banco e usuario forem inseguros, se `DATABASE_URL` divergir ou se `APP_PORT` nao estiver entre 1 e 65535. Os scripts tratam o arquivo como dados, sem executa-lo como codigo shell nem imprimir valores secretos. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
 
 ## Primeira inicializacao
 

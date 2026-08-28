@@ -1,7 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const databaseUrl = "postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test";
 const authSecret = "test-only-auth-secret-at-least-32-characters";
+
+export function databaseUrlForEnvironment(environment: Readonly<Record<string, string | undefined>>) {
+  return environment.DATABASE_URL
+    ?? "postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test";
+}
 
 export function shouldReuseExistingServer(environment: {
   CI?: string;
@@ -36,7 +40,7 @@ export default defineConfig({
     command: "npm run dev -- --hostname 127.0.0.1",
     env: {
       AUTH_SECRET: authSecret,
-      DATABASE_URL: databaseUrl,
+      DATABASE_URL: databaseUrlForEnvironment(process.env),
     },
     reuseExistingServer: shouldReuseExistingServer({
       CI: process.env.CI,

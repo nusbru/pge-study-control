@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import {
+  browserContextOptionsForProject,
   controlledToday,
   createSession,
   freezePageClock,
@@ -43,6 +44,17 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await page.getByRole("button", { name: "Salvar alterações" }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Direito Constitucional" })).toContainText("30 (75,0%)");
 
+  await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
+  const summary = page.getByRole("region", { name: "Período e resumo do desempenho" });
+  await expect(summary.getByText("Questões").locator("xpath=following-sibling::dd")).toHaveText("40");
+  await expect(summary.getByText("Acertos", { exact: true }).locator("xpath=following-sibling::dd"))
+    .toHaveText("30 75,0%");
+  await expect(summary.getByText("Erros", { exact: true }).locator("xpath=following-sibling::dd"))
+    .toHaveText("10 25,0%");
+  await expect(summary.getByText("Aproveitamento").locator("xpath=following-sibling::dd"))
+    .toHaveText("75,0% 30 de 40");
+
+  await page.goto("/sessions");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Excluir sessão de Direito Constitucional" }).click();
   await expect(page.getByRole("heading", { name: "Seu histórico começa com uma sessão" })).toBeVisible();
@@ -65,6 +77,17 @@ for (const scenario of [
     const calculated = countFields[scenario.missing];
     await expect(page.getByRole("spinbutton", { name: calculated.name, exact: true })).toHaveValue(calculated.value);
     await expect(page.getByText("Calculado automaticamente", { exact: true })).toBeVisible();
+    await page.getByLabel("Data do estudo").fill(controlledToday);
+    const subject = `Cálculo ${scenario.missing}`;
+    await page.getByLabel("Assunto").fill(subject);
+    await page.getByRole("button", { name: "Salvar sessão" }).click();
+
+    const persisted = page.getByRole("listitem").filter({ hasText: subject });
+    await expect(persisted.getByText("Total").locator("xpath=following-sibling::dd")).toHaveText("50");
+    await expect(persisted.getByText("Acertos").locator("xpath=following-sibling::dd"))
+      .toHaveText("30 (60,0%)");
+    await expect(persisted.getByText("Erros").locator("xpath=following-sibling::dd"))
+      .toHaveText("20 (40,0%)");
   });
 }
 
@@ -172,7 +195,7 @@ test("dashboard groups subjects after case and whitespace normalization", async 
   await expect(groupedSubject).toContainText("60,0%");
 });
 
-test("another authenticated user receives not found for an edit URL", async ({ page, browser }) => {
+test("another authenticated user receives not found for an edit URL", async ({ page, browser }, testInfo) => {
   await registerAndLogin(page, "session-owner");
   await createSession(page, {
     studyDate: controlledToday,
@@ -184,7 +207,7 @@ test("another authenticated user receives not found for an edit URL", async ({ p
     .getByRole("link", { name: "Editar" }).getAttribute("href");
   expect(editPath).not.toBeNull();
 
-  const secondContext = await browser.newContext();
+  const secondContext = await browser.newContext(browserContextOptionsForProject(testInfo.project.use));
   try {
     const secondPage = await secondContext.newPage();
     await freezePageClock(secondPage);
@@ -197,6 +220,8 @@ test("another authenticated user receives not found for an edit URL", async ({ p
       .toBe(await page.evaluate(() => devicePixelRatio));
     expect(await secondPage.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone))
       .toBe(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone));
+    expect(await secondPage.evaluate(() => navigator.language))
+      .toBe(await page.evaluate(() => navigator.language));
     await registerAndLogin(secondPage, "different-user");
     const response = await secondPage.goto(editPath!);
     expect(response?.status()).toBe(404);

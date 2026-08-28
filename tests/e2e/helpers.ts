@@ -1,8 +1,27 @@
 import crypto from "node:crypto";
-import { expect, test as base, type Page } from "@playwright/test";
+import {
+  expect,
+  test as base,
+  type BrowserContextOptions,
+  type FullProject,
+  type Page,
+} from "@playwright/test";
 
 export const testPassword = "correct horse";
 export const controlledToday = "2025-04-10";
+
+export function browserContextOptionsForProject(use: FullProject["use"]): BrowserContextOptions {
+  const options: BrowserContextOptions = {};
+  if (use.baseURL !== undefined) options.baseURL = use.baseURL;
+  if (use.viewport !== undefined) options.viewport = use.viewport;
+  if (use.userAgent !== undefined) options.userAgent = use.userAgent;
+  if (use.deviceScaleFactor !== undefined) options.deviceScaleFactor = use.deviceScaleFactor;
+  if (use.isMobile !== undefined) options.isMobile = use.isMobile;
+  if (use.hasTouch !== undefined) options.hasTouch = use.hasTouch;
+  if (use.locale !== undefined) options.locale = use.locale;
+  if (use.timezoneId !== undefined) options.timezoneId = use.timezoneId;
+  return options;
+}
 
 export async function freezePageClock(page: Page) {
   await page.clock.install({ time: new Date("2025-04-10T12:00:00-03:00") });
