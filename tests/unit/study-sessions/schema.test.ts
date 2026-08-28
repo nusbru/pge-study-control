@@ -22,6 +22,8 @@ describe("studySessionInputSchema", () => {
   it("parses form strings and resolves the missing count", () => {
     expect(studySessionInputSchema.parse(valid)).toMatchObject({
       studyDate: "2026-08-23",
+      subject: "Direito Constitucional",
+      subjectKey: "direito constitucional",
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
@@ -59,6 +61,26 @@ describe("studySessionInputSchema", () => {
       );
     },
   );
+
+  it.each([
+    ["   ", "não-numérico"],
+    [`  ${"a".repeat(121)}  `, "1000001"],
+  ])("reports subject and primitive count errors together", (subject, totalQuestions) => {
+    const result = studySessionInputSchema.safeParse({ ...valid, subject, totalQuestions });
+
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error("A validação deveria falhar.");
+    expect(result.error.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: ["subject"],
+        message: "Informe um assunto com até 120 caracteres.",
+      }),
+      expect.objectContaining({
+        path: ["totalQuestions"],
+        message: "Use números inteiros entre 0 e 1.000.000.",
+      }),
+    ]));
+  });
 
   it.each(["não-numérico", "1.5", "-1", "1000001"])(
     "rejects count value %s with a Portuguese field error",

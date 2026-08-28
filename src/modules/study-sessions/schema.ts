@@ -23,6 +23,18 @@ const optionalHttpUrl = z.preprocess(
   }, URL_ERROR).nullable(),
 );
 
+const normalizedSubject = z.string({ error: SUBJECT_ERROR }).transform((value, context) => {
+  try {
+    return normalizeSubject(value);
+  } catch (error) {
+    context.addIssue({
+      code: "custom",
+      message: error instanceof Error ? error.message : SUBJECT_ERROR,
+    });
+    return z.NEVER;
+  }
+});
+
 function isCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
@@ -35,7 +47,7 @@ function isCalendarDate(value: string) {
 
 const rawStudySessionSchema = z.object({
   studyDate: z.string({ error: DATE_ERROR }).refine(isCalendarDate, DATE_ERROR),
-  subject: z.string({ error: SUBJECT_ERROR }),
+  subject: normalizedSubject,
   totalQuestions: optionalCount,
   correctAnswers: optionalCount,
   wrongAnswers: optionalCount,
@@ -44,22 +56,10 @@ const rawStudySessionSchema = z.object({
 }, { error: "Dados inválidos." });
 
 export const studySessionInputSchema = rawStudySessionSchema.transform((data, context) => {
-  let normalizedSubject: ReturnType<typeof normalizeSubject>;
-  try {
-    normalizedSubject = normalizeSubject(data.subject);
-  } catch (error) {
-    context.addIssue({
-      code: "custom",
-      path: ["subject"],
-      message: error instanceof Error ? error.message : SUBJECT_ERROR,
-    });
-    return z.NEVER;
-  }
-
   try {
     return {
       studyDate: data.studyDate,
-      ...normalizedSubject,
+      ...data.subject,
       ...resolveQuestionCounts({
         totalQuestions: data.totalQuestions,
         correctAnswers: data.correctAnswers,
