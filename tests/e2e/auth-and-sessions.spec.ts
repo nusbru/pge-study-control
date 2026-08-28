@@ -207,11 +207,15 @@ test("another authenticated user receives not found for an edit URL", async ({ p
     .getByRole("link", { name: "Editar" }).getAttribute("href");
   expect(editPath).not.toBeNull();
 
-  const secondContext = await browser.newContext(browserContextOptionsForProject(testInfo.project.use));
+  const secondContextOptions = browserContextOptionsForProject(testInfo.project.use);
+  expect(secondContextOptions.screen).toBeDefined();
+  const secondContext = await browser.newContext(secondContextOptions);
   try {
     const secondPage = await secondContext.newPage();
     await freezePageClock(secondPage);
     expect(secondPage.viewportSize()).toEqual(page.viewportSize());
+    expect(await secondPage.evaluate(() => ({ width: screen.width, height: screen.height })))
+      .toEqual(secondContextOptions.screen);
     expect(await secondPage.evaluate(() => navigator.userAgent))
       .toBe(await page.evaluate(() => navigator.userAgent));
     expect(await secondPage.evaluate(() => navigator.maxTouchPoints))

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import { databaseUrlForEnvironment, shouldReuseExistingServer } from "../../../playwright.config";
+import { browserContextOptionsForProject } from "../../e2e/helpers";
 
 const temporaryDirectories: string[] = [];
 
@@ -27,6 +28,16 @@ describe("Playwright server isolation", () => {
     expect(shouldReuseExistingServer({})).toBe(false);
     expect(shouldReuseExistingServer({ PLAYWRIGHT_REUSE_EXISTING_SERVER: "1" })).toBe(true);
     expect(shouldReuseExistingServer({ CI: "1", PLAYWRIGHT_REUSE_EXISTING_SERVER: "1" })).toBe(false);
+  });
+
+  it("forwards project screen emulation to additional browser contexts", () => {
+    const options = browserContextOptionsForProject({
+      screen: { width: 412, height: 915 },
+      viewport: { width: 412, height: 839 },
+    });
+
+    expect(options.screen).toEqual({ width: 412, height: 915 });
+    expect(options.viewport).toEqual({ width: 412, height: 839 });
   });
 
   it("forces server reuse off in the self-contained runner", () => {

@@ -40,9 +40,9 @@ fail() {
 
 HARNESS_LOG="$TMP_DIR/concurrent.log"
 export HARNESS_LOG
-PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-integration-tests.sh" >"$TMP_DIR/integration.out" 2>"$TMP_DIR/integration.err" &
+TEST_DB_PORT=5433 PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-integration-tests.sh" >"$TMP_DIR/integration.out" 2>"$TMP_DIR/integration.err" &
 integration_pid=$!
-PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-e2e-tests.sh" --list >"$TMP_DIR/e2e.out" 2>"$TMP_DIR/e2e.err" &
+TEST_DB_PORT=5433 PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-e2e-tests.sh" --list >"$TMP_DIR/e2e.out" 2>"$TMP_DIR/e2e.err" &
 e2e_pid=$!
 wait "$integration_pid" || fail 'runner de integracao falhou com comandos controlados'
 wait "$e2e_pid" || fail 'runner E2E falhou com comandos controlados'
@@ -63,6 +63,9 @@ while IFS='|' read -r command project value arguments; do
       pge-integration-*) integration_url=$value ;;
       pge-e2e-*) e2e_url=$value ;;
     esac
+  fi
+  if [ "$command" = docker ] && [ "$value" != 0 ]; then
+    fail 'runner repassou porta fixa herdada ao Docker'
   fi
   if [ "$command" = docker ] && [ "$value" = 0 ]; then
     case $arguments in
@@ -87,13 +90,16 @@ done < "$HARNESS_LOG"
 HARNESS_LOG="$TMP_DIR/failure.log"
 export HARNESS_LOG
 set +e
-FAKE_FAIL_COMMAND=vitest PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-integration-tests.sh" >"$TMP_DIR/failure.out" 2>"$TMP_DIR/failure.err"
+FAKE_FAIL_COMMAND=vitest TEST_DB_PORT=5433 PATH="$FAKE_BIN:$PATH" sh "$ROOT_DIR/scripts/run-integration-tests.sh" >"$TMP_DIR/failure.out" 2>"$TMP_DIR/failure.err"
 failure_status=$?
 set -e
 [ "$failure_status" -eq 37 ] || fail 'runner nao preservou o status do teste'
 failure_down=0
 while IFS='|' read -r command project value arguments; do
-  if [ "$command" = docker ] && [ -n "$project" ] && [ "$value" = 0 ]; then
+  if [ "$command" = docker ] && [ "$value" != 0 ]; then
+    fail 'runner com falha repassou porta fixa herdada ao Docker'
+  fi
+  if [ "$command" = docker ] && [ -n "$project" ]; then
     case $arguments in
       *' down -v') failure_down=$((failure_down + 1)) ;;
     esac

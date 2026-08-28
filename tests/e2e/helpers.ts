@@ -10,10 +10,13 @@ import {
 export const testPassword = "correct horse";
 export const controlledToday = "2025-04-10";
 
-export function browserContextOptionsForProject(use: FullProject["use"]): BrowserContextOptions {
+type ProjectUseWithScreen = FullProject["use"] & Pick<BrowserContextOptions, "screen">;
+
+export function browserContextOptionsForProject(use: ProjectUseWithScreen): BrowserContextOptions {
   const options: BrowserContextOptions = {};
   if (use.baseURL !== undefined) options.baseURL = use.baseURL;
   if (use.viewport !== undefined) options.viewport = use.viewport;
+  if (use.screen !== undefined) options.screen = use.screen;
   if (use.userAgent !== undefined) options.userAgent = use.userAgent;
   if (use.deviceScaleFactor !== undefined) options.deviceScaleFactor = use.deviceScaleFactor;
   if (use.isMobile !== undefined) options.isMobile = use.isMobile;

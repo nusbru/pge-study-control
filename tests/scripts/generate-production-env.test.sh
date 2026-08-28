@@ -17,6 +17,8 @@ cat > "$FAKE_BIN/openssl" <<'SH'
 #!/bin/sh
 set -eu
 [ "$#" -eq 3 ] && [ "$1" = rand ] && [ "$2" = -hex ] && [ "$3" = 32 ] || exit 64
+[ "${db_password+x}" != x ] || exit 65
+[ "${auth_secret+x}" != x ] || exit 65
 count=0
 if [ -f "$FAKE_OPENSSL_STATE" ]; then
   IFS= read -r count < "$FAKE_OPENSSL_STATE"
@@ -40,7 +42,9 @@ fail() {
 }
 
 assert_no_temporary_output() {
-  for temporary_file in "$TMP_DIR"/."$1".tmp.*; do
+  output_directory=$1
+  output_name=$2
+  for temporary_file in "$output_directory"/."$output_name".tmp.*; do
     [ ! -e "$temporary_file" ] || fail "arquivo temporario permaneceu: $temporary_file"
   done
 }
@@ -53,7 +57,7 @@ FAKE_OPENSSL_STATE="$TMP_DIR/openssl-success.state" PATH="$FAKE_BIN:$PATH" \
 
 [ -f "$SUCCESS_ENV" ] || fail 'gerador nao criou o arquivo de ambiente'
 [ "$(stat -c '%a' "$SUCCESS_ENV")" = 600 ] || fail 'arquivo gerado nao usa modo 600'
-assert_no_temporary_output generated.env
+assert_no_temporary_output "$TMP_DIR" generated.env
 
 generated_db_secret=
 generated_auth_secret=
@@ -65,6 +69,30 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$SUCCESS_ENV"
 [ "$generated_db_secret" = "$DB_SECRET" ] || fail 'senha do banco nao foi gerada internamente'
 [ "$generated_auth_secret" = "$AUTH_SECRET_VALUE" ] || fail 'segredo de autenticacao nao foi gerado internamente'
+
+OBSERVED_ROOT="$TMP_DIR/observed-root"
+mkdir "$OBSERVED_ROOT" "$OBSERVED_ROOT/scripts"
+cp "$GENERATOR" "$OBSERVED_ROOT/scripts/generate-production-env.sh"
+cp "$TEMPLATE" "$OBSERVED_ROOT/.env.example"
+cat > "$OBSERVED_ROOT/scripts/validate-production-env.sh" <<'SH'
+#!/bin/sh
+set -eu
+[ "${db_password+x}" != x ] || exit 65
+[ "${auth_secret+x}" != x ] || exit 65
+printf '%s\n' validated > "$FAKE_VALIDATOR_STATE"
+exec "$REAL_VALIDATOR" "$@"
+SH
+chmod 755 "$OBSERVED_ROOT/scripts/validate-production-env.sh"
+if ! db_password=inherited auth_secret=inherited \
+  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-inherited.state" \
+  FAKE_VALIDATOR_STATE="$TMP_DIR/validator-inherited.state" \
+  REAL_VALIDATOR="$VALIDATOR" PATH="$FAKE_BIN:$PATH" \
+  "$OBSERVED_ROOT/scripts/generate-production-env.sh" "$OBSERVED_ROOT/.env.example" \
+  "$OBSERVED_ROOT/generated.env" >"$TMP_DIR/inherited.out" 2>"$TMP_DIR/inherited.err"; then
+  fail 'gerador vazou nomes de variaveis secretas para um processo filho'
+fi
+[ -f "$TMP_DIR/validator-inherited.state" ] || fail 'validador observado nao foi executado'
+assert_no_temporary_output "$OBSERVED_ROOT" generated.env
 
 captured_output=
 while IFS= read -r line || [ -n "$line" ]; do
@@ -90,7 +118,7 @@ fi
 existing_contents=
 IFS= read -r existing_contents < "$EXISTING_ENV"
 [ "$existing_contents" = preserve-me ] || fail 'arquivo existente foi alterado'
-assert_no_temporary_output existing.env
+assert_no_temporary_output "$TMP_DIR" existing.env
 
 FAILED_ENV="$TMP_DIR/failed.env"
 if FAKE_OPENSSL_FAIL_AT=2 FAKE_OPENSSL_STATE="$TMP_DIR/openssl-failure.state" PATH="$FAKE_BIN:$PATH" \
@@ -98,7 +126,7 @@ if FAKE_OPENSSL_FAIL_AT=2 FAKE_OPENSSL_STATE="$TMP_DIR/openssl-failure.state" PA
   fail 'gerador aceitou falha do OpenSSL'
 fi
 [ ! -e "$FAILED_ENV" ] || fail 'falha deixou arquivo de ambiente parcial'
-assert_no_temporary_output failed.env
+assert_no_temporary_output "$TMP_DIR" failed.env
 
 failure_output=
 while IFS= read -r line || [ -n "$line" ]; do
@@ -110,5 +138,28 @@ done < "$TMP_DIR/failure.err"
 case $failure_output in
   *"$DB_SECRET"* | *"$AUTH_SECRET_VALUE"*) fail 'falha imprimiu um segredo' ;;
 esac
+
+OPTION_OUTPUT_DIR="$TMP_DIR/option-output"
+mkdir "$OPTION_OUTPUT_DIR" "$OPTION_OUTPUT_DIR/other"
+set +e
+(
+  cd "$OPTION_OUTPUT_DIR"
+  FAKE_OPENSSL_STATE="$TMP_DIR/openssl-option.state" PATH="$FAKE_BIN:$PATH" \
+    "$GENERATOR" "$TEMPLATE" --target-directory=other \
+    >"$TMP_DIR/option.out" 2>"$TMP_DIR/option.err"
+)
+option_status=$?
+set -e
+[ "$option_status" -ne 0 ] || fail 'gerador aceitou basename de saida iniciado por hifen'
+[ ! -e "$OPTION_OUTPUT_DIR/--target-directory=other" ] || fail 'basename invalido criou arquivo de saida'
+for unexpected_file in \
+  "$OPTION_OUTPUT_DIR/other"/* \
+  "$OPTION_OUTPUT_DIR/other"/.[!.]* \
+  "$OPTION_OUTPUT_DIR/other"/..?*; do
+  if [ -e "$unexpected_file" ] || [ -L "$unexpected_file" ]; then
+    fail 'basename invalido instalou arquivo fora do destino solicitado'
+  fi
+done
+assert_no_temporary_output "$OPTION_OUTPUT_DIR" --target-directory=other
 
 printf '%s\n' 'PASS: gera, protege, valida e instala o ambiente sem expor segredos'

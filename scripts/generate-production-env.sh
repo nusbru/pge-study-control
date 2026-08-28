@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+unset db_password auth_secret
+
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 TEMPLATE_FILE=${1:-"$ROOT_DIR/.env.example"}
 OUTPUT_FILE=${2:-"$ROOT_DIR/.env"}
@@ -22,6 +24,9 @@ case $OUTPUT_FILE in
 esac
 output_name=${OUTPUT_FILE##*/}
 [ -n "$output_name" ] || fail 'Caminho de saida invalido'
+case $output_name in
+  -*) fail 'Nome do arquivo de saida nao pode iniciar com hifen' ;;
+esac
 [ -d "$output_directory" ] || fail "Diretorio de saida nao encontrado: $output_directory"
 
 umask 077

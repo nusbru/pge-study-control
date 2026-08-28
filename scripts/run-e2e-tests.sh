@@ -2,7 +2,7 @@
 set -eu
 
 COMPOSE_PROJECT_NAME="pge-e2e-$(date +%s)-$$"
-TEST_DB_PORT=${TEST_DB_PORT:-0}
+TEST_DB_PORT=0
 export COMPOSE_PROJECT_NAME TEST_DB_PORT
 export AUTH_SECRET='test-only-auth-secret-at-least-32-characters'
 cleanup_required=0
