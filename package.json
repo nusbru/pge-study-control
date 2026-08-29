@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:operations && npm run test:security",
     "test:unit": "vitest run --config vitest.config.ts",
-    "test:operations": "sh tests/scripts/generate-production-env.test.sh && sh tests/scripts/test-runners.test.sh",
+    "test:operations": "sh tests/scripts/generate-production-env.test.sh && sh tests/scripts/test-runners.test.sh && sh tests/scripts/run-local.test.sh",
     "test:security": "sh tests/scripts/validate-production-env.test.sh",
     "test:integration": "sh scripts/run-integration-tests.sh",
     "test:e2e:install": "playwright install --with-deps chromium",
