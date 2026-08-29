@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-23T21:30:14Z",
+  "title": "Design System: PGE Study",
+  "extensions": {
+    "colorMeta": {
+      "paper-neutral": { "role": "neutral", "displayName": "Papel Neutro", "canonical": "#f7f7f4", "tonalRamp": ["#252522", "#464640", "#686860", "#8b8b82", "#adada5", "#cecec7", "#e7e7e2", "#f7f7f4"] },
+      "legal-ink": { "role": "neutral", "displayName": "Tinta Jurídica", "canonical": "#25283a", "tonalRamp": ["#171923", "#25283a", "#3e425b", "#5b607c", "#7b809d", "#a0a4ba", "#c8cad6", "#eff0f4"] },
+      "action-coral": { "role": "primary", "displayName": "Coral de Ação", "canonical": "#e95d3f", "tonalRamp": ["#35120c", "#612318", "#8e3525", "#b94731", "#e95d3f", "#ef8973", "#f5b5a6", "#fce6df"] },
+      "precision-blue": { "role": "secondary", "displayName": "Azul de Precisão", "canonical": "#4a568c", "tonalRamp": ["#151827", "#252b47", "#35406a", "#4a568c", "#6d77a4", "#939abd", "#bcc0d6", "#e7e8f1"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Título Editorial", "purpose": "Título principal e estados vazios curtos." },
+      "body": { "displayName": "Leitura de Produto", "purpose": "Texto, controles e dados." },
+      "label": { "displayName": "Rótulo de Controle", "purpose": "Campos, botões e metadados." }
+    },
+    "shadows": [
+      { "name": "panel-ambient", "value": "0 1.5rem 4rem rgb(37 40 58 / 8%)", "purpose": "Painéis realmente elevados, como autenticação em desktop." }
+    ],
+    "motion": [
+      { "name": "state-quick", "value": "180ms cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Hover, foco e seleção; removido sob movimento reduzido." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "32rem" },
+      { "name": "content-stack", "value": "48rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal refinada e contida.",
+      "html": "<button class=\"ds-btn-primary\">Salvar sessão</button>",
+      "css": ".ds-btn-primary{min-height:2.875rem;padding:.7rem 1rem;border:1px solid var(--ink,#25283a);border-radius:.625rem;background:var(--ink,#25283a);color:var(--surface,#fff);font:700 1rem/1.2 Inter,system-ui,sans-serif;cursor:pointer;transition:background-color 180ms cubic-bezier(.25,1,.5,1),border-color 180ms cubic-bezier(.25,1,.5,1)}.ds-btn-primary:hover{background:var(--correct,#4a568c);border-color:var(--correct,#4a568c)}.ds-btn-primary:focus-visible{outline:3px solid color-mix(in srgb,var(--accent,#e95d3f) 45%,transparent);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo familiar com foco inequívoco.",
+      "html": "<label class=\"ds-field\">Assunto<input value=\"Direito Constitucional\"></label>",
+      "css": ".ds-field{display:grid;gap:.45rem;color:var(--ink,#25283a);font:700 .875rem/1.4 Inter,system-ui,sans-serif}.ds-field input{min-height:2.875rem;padding:.7rem .8rem;border:1px solid #a4a5aa;border-radius:.625rem;background:var(--surface,#fff);color:var(--ink,#25283a);font:400 1rem/1.5 Inter,system-ui,sans-serif}.ds-field input:hover{border-color:var(--ink,#25283a)}.ds-field input:focus-visible{outline:3px solid color-mix(in srgb,var(--accent,#e95d3f) 45%,transparent);outline-offset:2px}"
+    },
+    {
+      "name": "Period Filter",
+      "kind": "chip",
+      "description": "Filtro temporal compacto com seleção estrutural.",
+      "html": "<div class=\"ds-filters\"><button>7 dias</button><button class=\"is-active\">30 dias</button><button>90 dias</button></div>",
+      "css": ".ds-filters{display:flex;gap:.45rem;flex-wrap:wrap}.ds-filters button{padding:.45rem .75rem;border:1px solid var(--line,#e6e6df);border-radius:999px;background:var(--paper,#f7f7f4);color:var(--ink,#25283a);font:700 .875rem/1.2 Inter,system-ui,sans-serif}.ds-filters button.is-active{background:var(--ink,#25283a);color:#fff}.ds-filters button:focus-visible{outline:3px solid color-mix(in srgb,var(--accent,#e95d3f) 45%,transparent);outline-offset:2px}"
+    },
+    {
+      "name": "Performance Bar",
+      "kind": "custom",
+      "description": "Proporção de acertos e erros acompanhada por texto.",
+      "html": "<div class=\"ds-performance\"><div><strong>Direito Constitucional</strong><span>84,0% de acertos</span></div><div class=\"ds-track\" aria-label=\"84,0% de acertos e 16,0% de erros\"><i></i><b></b></div></div>",
+      "css": ".ds-performance{display:grid;gap:.6rem;padding:1rem;border:1px solid var(--line,#e6e6df);border-radius:1rem;background:var(--surface,#fff);font-family:Inter,system-ui,sans-serif}.ds-performance>div:first-child{display:flex;justify-content:space-between;gap:1rem}.ds-performance span{color:var(--muted,#747680)}.ds-track{display:flex;height:.5rem;overflow:hidden;border-radius:999px;background:var(--line,#e6e6df)}.ds-track i{width:84%;background:var(--correct,#4a568c)}.ds-track b{width:16%;background:var(--accent,#e95d3f)}"
+    },
+    {
+      "name": "Raised Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Superfície elevada somente quando o fluxo exige isolamento.",
+      "html": "<section class=\"ds-panel\"><h2>Entre na sua conta</h2><p>Continue de onde parou nos seus estudos.</p></section>",
+      "css": ".ds-panel{max-width:28rem;padding:2rem;border:1px solid var(--line,#e6e6df);border-radius:1rem;background:var(--surface,#fff);color:var(--ink,#25283a);box-shadow:0 1.5rem 4rem rgb(37 40 58 / 8%)}.ds-panel h2{margin:0;font:700 2rem/1.1 Georgia,serif;text-wrap:balance}.ds-panel p{max-width:70ch;color:var(--muted,#747680);font:400 1rem/1.5 Inter,system-ui,sans-serif}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Caderno de Estratégia",
+    "overview": "Uma ferramenta pessoal de raciocínio, organizada como um caderno bem editado, precisa como uma planilha confiável e calma como uma rotina de estudo sustentável. A autoridade vem de números verificáveis, espaçamento disciplinado e linguagem direta.",
+    "keyCharacteristics": ["Informação antes de ornamentação.", "Percentuais acompanhados por contagens concretas.", "Coral para ação e erro; azul para precisão e acerto.", "Responsividade sem perda funcional."],
+    "rules": [
+      { "name": "The Two Signals Rule", "body": "Coral significa agir ou corrigir; azul significa compreender ou acertar.", "section": "colors" },
+      { "name": "The Data Is Sans Rule", "body": "Números, percentuais, campos, botões e rótulos nunca usam a fonte editorial.", "section": "typography" },
+      { "name": "The Tonal-First Rule", "body": "Se fundo, linha e espaçamento explicam a hierarquia, sombra é proibida.", "section": "elevation" }
+    ],
+    "dos": ["Do manter percentuais próximos das contagens concretas.", "Do preservar foco visível e significado independente de cor."],
+    "donts": ["Don't produzir um SaaS genérico.", "Don't introduzir gamificação infantil.", "Don't imitar um jurídico antiquado.", "Don't criar um dashboard carregado."]
+  }
+}

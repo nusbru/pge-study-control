@@ -1,0 +1,380 @@
+.ledger {
+  margin-bottom: 2.75rem;
+  border-block: 1px solid var(--line);
+}
+
+.filterRow {
+  display: flex;
+  min-height: 4rem;
+  padding: 0.7rem 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filterGroup h2 {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.filters a {
+  display: inline-flex;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: background-color 180ms ease-out, color 180ms ease-out;
+}
+
+.filters a:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.filters a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.filters a:focus-visible,
+.empty a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.throughDate {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.summary > div {
+  min-width: 0;
+  padding: 1.25rem;
+  border-left: 1px solid var(--line);
+}
+
+.summary > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.summary dt {
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.summary dd span {
+  margin-left: 0.3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.summary .summaryCorrect dd {
+  color: #3f4b7b;
+}
+
+.summary .summaryWrong dd {
+  color: #9b2f24;
+}
+
+.performanceHeader {
+  display: flex;
+  margin-bottom: 1.25rem;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+.performanceHeader h2,
+.empty h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.performanceHeader p,
+.empty p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex: none;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend i {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 0.2rem;
+}
+
+.correctKey,
+.correctSegment {
+  background: var(--correct);
+}
+
+.wrongKey,
+.wrongSegment {
+  background: var(--danger);
+}
+
+.subjects {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.subject {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(20rem, 2fr);
+  gap: 0.9rem 2rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--line);
+  align-items: end;
+}
+
+.subjectHeading h3 {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.subjectHeading > span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.subjectCounts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  margin: 0;
+}
+
+.subjectCounts div {
+  min-width: 8.5rem;
+}
+
+.subjectCounts dt {
+  margin-bottom: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.subjectCounts dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.subjectCounts dd span {
+  margin-left: 0.25rem;
+}
+
+.correctCount dd {
+  color: #3f4b7b;
+}
+
+.wrongCount dd {
+  color: #9b2f24;
+}
+
+.bar {
+  display: flex;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 0.75rem;
+  border-radius: 0.3rem;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.bar span {
+  min-width: 0;
+  height: 100%;
+}
+
+.empty,
+.preparing {
+  padding: 3.5rem 1rem;
+  border-block: 1px solid var(--line);
+  text-align: center;
+}
+
+.empty p {
+  max-width: 38rem;
+  margin-inline: auto;
+}
+
+.empty a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  align-items: center;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 750;
+  text-underline-offset: 0.2em;
+}
+
+.preparing p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.preparing span {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 44rem) {
+  .filterRow,
+  .performanceHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filterGroup {
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filters {
+    width: 100%;
+  }
+
+  .filters a {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary > div {
+    padding: 1rem;
+  }
+
+  .summary > div:first-child {
+    padding-left: 0;
+  }
+
+  .summary > div:nth-child(3) {
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .summary > div:nth-child(4) {
+    border-top: 1px solid var(--line);
+  }
+
+  .legend {
+    width: 100%;
+  }
+
+  .subject {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .subjectCounts {
+    justify-content: flex-start;
+  }
+
+  .bar {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 22rem) {
+  .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summary > div,
+  .summary > div:first-child,
+  .summary > div:nth-child(3) {
+    padding: 0.9rem 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .summary > div:first-child {
+    border-top: 0;
+  }
+
+  .subjectCounts {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filters a {
+    transition: none;
+  }
+}

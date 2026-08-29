@@ -1432,9 +1432,9 @@ APP_PORT=3000
 
 Run: `npm run test:unit -- tests/unit/app/health.test.ts`
 
-Run: `docker compose config`
+Run: `docker compose config --quiet`
 
-Expected: valid rendered Compose configuration with no missing required variable when a temporary test `.env` is supplied.
+Expected: valid Compose configuration with no missing required variable when a temporary test `.env` is supplied and no rendered output.
 
 Run: `docker compose build`
 
@@ -1465,7 +1465,7 @@ git commit -m "feat: add self-hosted deployment"
 - [ ] Run `npm run test:integration` and confirm real PostgreSQL integration tests pass.
 - [ ] Run `npm run test:e2e` and confirm desktop/mobile browser projects pass.
 - [ ] Run `npm run lint`, `npm run typecheck`, and `npm run build` with zero errors.
-- [ ] Run `docker compose config`, `docker compose build`, and `docker compose up -d --wait` successfully.
+- [ ] Run `docker compose config --quiet`, `docker compose build`, and `docker compose up -d --wait` successfully.
 - [ ] Confirm `GET /api/health` returns 200 and `{ "status": "ok" }`.
 - [ ] Manually verify registration, login, all three count calculations, edit, delete, period filters, safe links, logout, and cross-user denial.
 - [ ] Inspect `git status --short` and confirm no `.env`, generated Prisma client, test artifacts, or `.superpowers/` files are tracked.
