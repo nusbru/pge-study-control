@@ -65,12 +65,16 @@ describe("SessionDetailsPage", () => {
     expect(screen.getByText("20 (40,0%)")).toBeVisible();
     expect(screen.getByText("50")).toBeVisible();
 
-    const questions = screen.getByRole("link", { name: /Lista de questões/ });
+    const questions = screen.getByRole("link", {
+      name: "Lista de questões (abre em nova aba)",
+    });
     expect(questions).toHaveAttribute("href", "https://example.com/questions");
     expect(questions).toHaveAttribute("target", "_blank");
     expect(questions).toHaveAttribute("rel", "noopener noreferrer");
 
-    const errors = screen.getByRole("link", { name: /Lista de erros/ });
+    const errors = screen.getByRole("link", {
+      name: "Lista de erros (abre em nova aba)",
+    });
     expect(errors).toHaveAttribute("href", "https://example.com/errors");
     expect(errors).toHaveAttribute("target", "_blank");
     expect(errors).toHaveAttribute("rel", "noopener noreferrer");
@@ -98,8 +102,12 @@ describe("SessionDetailsPage", () => {
     render(page);
 
     expect(screen.queryByRole("region", { name: "Materiais da sessão" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Lista de questões/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Lista de erros/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Lista de questões (abre em nova aba)" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Lista de erros (abre em nova aba)" }),
+    ).not.toBeInTheDocument();
   });
 
   it("returns not found when the session is missing or inaccessible", async () => {

@@ -65,12 +65,22 @@ export default async function SessionDetailsPage({ params }: SessionDetailsPageP
             <h3>Materiais</h3>
             <div>
               {session.questionListUrl && (
-                <a href={session.questionListUrl} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={session.questionListUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Lista de questões (abre em nova aba)"
+                >
                   Lista de questões <span aria-hidden="true">↗</span>
                 </a>
               )}
               {session.wrongQuestionListUrl && (
-                <a href={session.wrongQuestionListUrl} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={session.wrongQuestionListUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Lista de erros (abre em nova aba)"
+                >
                   Lista de erros <span aria-hidden="true">↗</span>
                 </a>
               )}
