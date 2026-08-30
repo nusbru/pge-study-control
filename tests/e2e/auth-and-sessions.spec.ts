@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import {
   browserContextOptionsForProject,
   controlledToday,
@@ -13,6 +13,13 @@ const countFields = {
   correct: { name: "Acertos", value: "30" },
   wrong: { name: "Erros", value: "20" },
 } as const;
+
+async function expectDashboardUrl(page: Page, questionType: "jurisprudence" | "doctrine" | "all") {
+  await expect(page).toHaveURL((url) => url.pathname === "/dashboard"
+    && url.searchParams.get("period") === "30d"
+    && url.searchParams.get("today") === controlledToday
+    && url.searchParams.get("questionType") === questionType);
+}
 
 test("candidate registers, records, edits, and deletes a study session", async ({ page }) => {
   await registerAndLogin(page, "complete-flow");
@@ -217,19 +224,19 @@ test("dashboard filters sessions by question type and preserves the date window"
   const totalQuestions = summary.getByText("Questões").locator("xpath=following-sibling::dd");
 
   await typeFilters.getByRole("link", { name: "Jurisprudência" }).click();
-  await expect(page).toHaveURL(new RegExp(
-    `period=30d&today=${controlledToday}&questionType=jurisprudence`,
-  ));
+  await expectDashboardUrl(page, "jurisprudence");
   await expect(totalQuestions).toHaveText("10");
   await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toHaveCount(0);
 
   await typeFilters.getByRole("link", { name: "Doutrina" }).click();
+  await expectDashboardUrl(page, "doctrine");
   await expect(totalQuestions).toHaveText("20");
   await expect(page.getByRole("heading", { name: "Controle concentrado" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
 
   await typeFilters.getByRole("link", { name: "Todos" }).click();
+  await expectDashboardUrl(page, "all");
   await expect(totalQuestions).toHaveText("30");
   await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
