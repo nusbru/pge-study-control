@@ -118,6 +118,16 @@ describe("dashboard queries", () => {
         },
         {
           userId: owner.id,
+          studyDate: new Date("2026-07-01T00:00:00.000Z"),
+          subject: "Direito Tributário",
+          subjectKey: "direito tributário",
+          questionType: QuestionType.JURISPRUDENCE,
+          totalQuestions: 40,
+          correctAnswers: 30,
+          wrongAnswers: 10,
+        },
+        {
+          userId: owner.id,
           studyDate,
           subject: "Direito Penal",
           subjectKey: "direito penal",
@@ -151,9 +161,23 @@ describe("dashboard queries", () => {
 
     await expect(
       getDashboard(owner.id, "30d", "2026-08-23", QuestionType.JURISPRUDENCE),
-    ).resolves.toMatchObject({
-      overall: { totalQuestions: 10, correctAnswers: 8, wrongAnswers: 2 },
-      subjects: [{ subject: "Direito Civil", totalQuestions: 10 }],
+    ).resolves.toEqual({
+      overall: {
+        totalQuestions: 10,
+        correctAnswers: 8,
+        wrongAnswers: 2,
+        correctPercentage: 80,
+        wrongPercentage: 20,
+      },
+      subjects: [{
+        subject: "Direito Civil",
+        subjectKey: "direito civil",
+        totalQuestions: 10,
+        correctAnswers: 8,
+        wrongAnswers: 2,
+        correctPercentage: 80,
+        wrongPercentage: 20,
+      }],
     });
     await expect(
       getDashboard(owner.id, "30d", "2026-08-23", QuestionType.UNSPECIFIED),

@@ -211,6 +211,13 @@ test("dashboard filters sessions by question type and preserves the date window"
     correctAnswers: "8",
   });
   await createSession(page, {
+    studyDate: "2025-03-01",
+    subject: "Jurisprudência histórica",
+    questionType: "Jurisprudência",
+    totalQuestions: "40",
+    correctAnswers: "30",
+  });
+  await createSession(page, {
     studyDate: controlledToday,
     subject: "Teoria constitucional",
     questionType: "Doutrina",
@@ -227,6 +234,7 @@ test("dashboard filters sessions by question type and preserves the date window"
   await expectDashboardUrl(page, "jurisprudence");
   await expect(totalQuestions).toHaveText("10");
   await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toHaveCount(0);
 
   await typeFilters.getByRole("link", { name: "Doutrina" }).click();
@@ -239,6 +247,7 @@ test("dashboard filters sessions by question type and preserves the date window"
   await expectDashboardUrl(page, "all");
   await expect(totalQuestions).toHaveText("30");
   await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
 });
 
