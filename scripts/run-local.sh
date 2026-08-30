@@ -48,7 +48,7 @@ fi
 cleanup_required=1
 docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --wait
 npm exec -- prisma migrate deploy
-npm run dev -- --port "$APP_PORT" &
+node "$ROOT_DIR/scripts/run-local-app.mjs" &
 app_pid=$!
 
 while :; do

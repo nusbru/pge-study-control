@@ -14,10 +14,25 @@ printf 'npm|%s|%s|%s|%s|%s\n' \
   "${LOCAL_DB_PORT-}" "${APP_PORT-}" "${DATABASE_URL-}" "${AUTH_SECRET-}" "$*" \
   >> "$HARNESS_LOG"
 if [ "$*" = "${FAKE_WAIT_ARGS-}" ]; then
-  exec signal-waiter
+  printf '%s\n' "$$" > "$NPM_PID_FILE"
+  trap 'printf "%s\n" HUP > "$NPM_SIGNAL_LOG"' HUP
+  trap 'printf "%s\n" INT > "$NPM_SIGNAL_LOG"' INT
+  trap 'printf "%s\n" TERM > "$NPM_SIGNAL_LOG"' TERM
+  signal-waiter &
+  child_pid=$!
+  while :; do
+    set +e
+    wait "$child_pid"
+    child_status=$?
+    set -e
+    if kill -0 "$child_pid" 2>/dev/null; then
+      continue
+    fi
+    exit "$child_status"
+  done
 fi
 if [ "$*" = "${FAKE_FAIL_ARGS-}" ]; then
-  exit 37
+  exit "${FAKE_FAIL_STATUS:-37}"
 fi
 SH
 chmod 755 "$FAKE_BIN/npm"
@@ -58,6 +73,10 @@ set -eu
 printf 'docker|%s|%s|%s|%s|%s\n' \
   "${LOCAL_DB_PORT-}" "${APP_PORT-}" "${DATABASE_URL-}" "${AUTH_SECRET-}" "$*" \
   >> "$HARNESS_LOG"
+case $* in
+  *' up -d --wait') [ -z "${FAKE_COMPOSE_UP_STATUS-}" ] || exit "$FAKE_COMPOSE_UP_STATUS" ;;
+  *' down') [ -z "${FAKE_COMPOSE_DOWN_STATUS-}" ] || exit "$FAKE_COMPOSE_DOWN_STATUS" ;;
+esac
 SH
 chmod 755 "$FAKE_BIN/docker"
 
@@ -70,6 +89,9 @@ prepare_project() {
   project=$1
   mkdir -p "$project/scripts"
   cp "$ROOT_DIR/scripts/run-local.sh" "$project/scripts/run-local.sh"
+  if [ -e "$ROOT_DIR/scripts/run-local-app.mjs" ]; then
+    cp "$ROOT_DIR/scripts/run-local-app.mjs" "$project/scripts/run-local-app.mjs"
+  fi
   cp "$ROOT_DIR/compose.dev.yaml" "$project/compose.dev.yaml"
 }
 
@@ -111,11 +133,15 @@ run_signal_scenario() {
   prepare_project "$signal_project"
   mkdir "$signal_project/node_modules"
   signal_log="$TMP_DIR/signal-$signal_name.log"
+  npm_pid_file="$TMP_DIR/signal-$signal_name.npm.pid"
+  npm_signal_log="$TMP_DIR/signal-$signal_name.npm.received"
   app_pid_file="$TMP_DIR/signal-$signal_name.pid"
   app_signal_log="$TMP_DIR/signal-$signal_name.received"
   runner_pid_file="$TMP_DIR/signal-$signal_name.runner"
 
   HARNESS_LOG="$signal_log" \
+  NPM_PID_FILE="$npm_pid_file" \
+  NPM_SIGNAL_LOG="$npm_signal_log" \
   APP_PID_FILE="$app_pid_file" \
   APP_SIGNAL_LOG="$app_signal_log" \
   RUNNER_PID_FILE="$runner_pid_file" \
@@ -124,7 +150,7 @@ run_signal_scenario() {
     signal-launcher sh "$signal_project/scripts/run-local.sh" &
   launcher_pid=$!
 
-  if ! wait_for_file "$runner_pid_file" || ! wait_for_file "$app_pid_file"; then
+  if ! wait_for_file "$runner_pid_file" || ! wait_for_file "$npm_pid_file" || ! wait_for_file "$app_pid_file"; then
     if [ -s "$runner_pid_file" ]; then
       IFS= read -r runner_pid < "$runner_pid_file"
       kill -TERM "$runner_pid" 2>/dev/null || :
@@ -133,12 +159,18 @@ run_signal_scenario() {
       IFS= read -r app_pid < "$app_pid_file"
       kill -TERM "$app_pid" 2>/dev/null || :
     fi
+    if [ -s "$npm_pid_file" ]; then
+      IFS= read -r npm_pid < "$npm_pid_file"
+      kill -TERM "$npm_pid" 2>/dev/null || :
+    fi
     kill -TERM "$launcher_pid" 2>/dev/null || :
     wait "$launcher_pid" 2>/dev/null || :
     fail "aplicacao nao iniciou antes do sinal $signal_name"
   fi
   IFS= read -r runner_pid < "$runner_pid_file"
+  IFS= read -r npm_pid < "$npm_pid_file"
   IFS= read -r app_pid < "$app_pid_file"
+  [ "$npm_pid" != "$app_pid" ] || fail "cenario $signal_name nao criou descendente distinto do npm"
   kill -"$signal_name" "$runner_pid"
 
   if ! wait_for_down "$signal_log"; then
@@ -152,12 +184,19 @@ run_signal_scenario() {
   runner_status=$?
   set -e
   [ "$runner_status" -eq "$expected_status" ] || fail "sinal $signal_name retornou status $runner_status em vez de $expected_status"
+  [ -e "$npm_signal_log" ] || fail "sinal $signal_name nao alcancou o processo npm"
+  IFS= read -r npm_received_signal < "$npm_signal_log"
+  [ "$npm_received_signal" = "$signal_name" ] || fail "npm recebeu $npm_received_signal em vez de $signal_name"
   [ -e "$app_signal_log" ] || fail "sinal $signal_name nao foi encaminhado para a aplicacao"
   IFS= read -r received_signal < "$app_signal_log"
   [ "$received_signal" = "$signal_name" ] || fail "sinal $signal_name foi encaminhado como $received_signal"
   if kill -0 "$app_pid" 2>/dev/null; then
     kill -KILL "$app_pid" 2>/dev/null || :
-    fail "sinal $signal_name deixou a aplicacao orfa"
+    fail "sinal $signal_name deixou o descendente da aplicacao orfao"
+  fi
+  if kill -0 "$npm_pid" 2>/dev/null; then
+    kill -KILL "$npm_pid" 2>/dev/null || :
+    fail "sinal $signal_name deixou o processo npm orfao"
   fi
 
   down_count=0
@@ -175,6 +214,65 @@ run_signal_scenario() {
     esac
   done < "$signal_log"
   [ "$down_count" -eq 1 ] || fail "sinal $signal_name executou $down_count limpezas"
+}
+
+assert_failure_command() {
+  failure_case=$1
+  failure_line=$2
+  failure_command=$3
+  failure_arguments=$4
+  failure_project=$5
+  case "$failure_case:$failure_line" in
+    compose-startup:1|migration:1|cleanup:1)
+      [ "$failure_command|$failure_arguments" = "docker|compose -p pge-local -f $failure_project/compose.dev.yaml up -d --wait" ] || fail "$failure_case executou Compose up incorretamente"
+      ;;
+    compose-startup:2|migration:3|cleanup:4)
+      [ "$failure_command|$failure_arguments" = "docker|compose -p pge-local -f $failure_project/compose.dev.yaml down" ] || fail "$failure_case nao encerrou com Compose down seguro"
+      ;;
+    migration:2|cleanup:2)
+      [ "$failure_command|$failure_arguments" = 'npm|exec -- prisma migrate deploy' ] || fail "$failure_case nao executou a migracao na ordem esperada"
+      ;;
+    cleanup:3)
+      [ "$failure_command|$failure_arguments" = 'npm|run dev -- --port 3000' ] || fail 'falha da aplicacao ocorreu no comando incorreto'
+      ;;
+    *) fail "$failure_case executou comando extra na linha $failure_line" ;;
+  esac
+}
+
+run_failure_scenario() {
+  failure_case=$1
+  expected_status=$2
+  npm_fail_args=$3
+  npm_fail_status=$4
+  compose_up_status=$5
+  compose_down_status=$6
+  expected_lines=$7
+  failure_project="$TMP_DIR/failure-$failure_case-project"
+  prepare_project "$failure_project"
+  mkdir "$failure_project/node_modules"
+  failure_log="$TMP_DIR/failure-$failure_case.log"
+
+  set +e
+  HARNESS_LOG="$failure_log" \
+  FAKE_FAIL_ARGS="$npm_fail_args" \
+  FAKE_FAIL_STATUS="$npm_fail_status" \
+  FAKE_COMPOSE_UP_STATUS="$compose_up_status" \
+  FAKE_COMPOSE_DOWN_STATUS="$compose_down_status" \
+  PATH="$FAKE_BIN:$PATH" \
+    sh "$failure_project/scripts/run-local.sh"
+  failure_status=$?
+  set -e
+  [ "$failure_status" -eq "$expected_status" ] || fail "$failure_case retornou $failure_status em vez do status original $expected_status"
+
+  failure_line=0
+  while IFS='|' read -r failure_command _ _ _ _ failure_arguments; do
+    failure_line=$((failure_line + 1))
+    assert_failure_command "$failure_case" "$failure_line" "$failure_command" "$failure_arguments" "$failure_project"
+    case $failure_arguments in
+      *' down -v'|*' down --volumes'*) fail "$failure_case tentou remover o volume" ;;
+    esac
+  done < "$failure_log"
+  [ "$failure_line" -eq "$expected_lines" ] || fail "$failure_case executou $failure_line comandos em vez de $expected_lines"
 }
 
 default_project="$TMP_DIR/default-project"
@@ -253,6 +351,10 @@ while IFS='|' read -r command db_port app_port database_url auth_secret argument
   esac
 done < "$override_log"
 [ "$override_line" -eq 4 ] || fail 'fluxo com override nao executou quatro comandos'
+
+run_failure_scenario compose-startup 41 '' '' 41 91 2
+run_failure_scenario migration 42 'exec -- prisma migrate deploy' 42 '' 92 3
+run_failure_scenario cleanup 43 'run dev -- --port 3000' 43 '' 93 4
 
 run_signal_scenario HUP 129
 run_signal_scenario INT 130

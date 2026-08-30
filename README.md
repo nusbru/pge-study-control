@@ -5,7 +5,7 @@ Plataforma responsiva para registrar sessoes de estudo e acompanhar o desempenho
 ## Requisitos
 
 - Node.js 22.x e npm para desenvolvimento;
-- Docker Engine com Docker Compose para os bancos de teste e a implantacao;
+- Docker Engine com Docker Compose para o desenvolvimento local, os bancos de teste e a implantacao;
 - Chromium do Playwright (`npm run test:e2e:install`) para testes de ponta a ponta;
 - OpenSSL para gerar os segredos da implantacao.
 
