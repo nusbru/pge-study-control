@@ -13,6 +13,13 @@
   border-bottom: 1px solid var(--line);
 }
 
+.filterControls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .filterGroup {
   display: flex;
   align-items: center;
@@ -301,12 +308,16 @@
     flex-direction: column;
   }
 
+  .filterControls {
+    width: 100%;
+  }
+
   .filters {
     width: 100%;
   }
 
   .filters a {
-    flex: 1;
+    flex: none;
     justify-content: center;
   }
 

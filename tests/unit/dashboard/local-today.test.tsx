@@ -3,6 +3,7 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QuestionType } from "@/generated/prisma/enums";
 import { LocalTodayRedirect } from "@/modules/dashboard/local-today-redirect";
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn() }));
@@ -26,7 +27,13 @@ describe("LocalTodayRedirect", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T00:30:00.000Z"));
     process.env.TZ = "UTC";
-    const serverHtml = renderToString(<LocalTodayRedirect period="30d" today={undefined} />);
+    const serverHtml = renderToString(
+      <LocalTodayRedirect
+        period="30d"
+        today={undefined}
+        questionType={QuestionType.DOCTRINE}
+      />,
+    );
     const container = document.createElement("div");
     container.innerHTML = serverHtml;
     document.body.append(container);
@@ -36,11 +43,18 @@ describe("LocalTodayRedirect", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     let root!: Root;
     await act(async () => {
-      root = hydrateRoot(container, <LocalTodayRedirect period="30d" today={undefined} />);
+      root = hydrateRoot(
+        container,
+        <LocalTodayRedirect
+          period="30d"
+          today={undefined}
+          questionType={QuestionType.DOCTRINE}
+        />,
+      );
     });
 
     expect(mocks.replace).toHaveBeenCalledWith(
-      "/dashboard?period=30d&today=2026-08-23",
+      "/dashboard?period=30d&today=2026-08-23&questionType=doctrine",
       { scroll: false },
     );
     expect(consoleError.mock.calls.flat().join(" ").toLowerCase()).not.toContain("hydrat");
@@ -58,11 +72,17 @@ describe("LocalTodayRedirect", () => {
     vi.setSystemTime(new Date("2026-08-24T00:30:00.000Z"));
     process.env.TZ = "America/Los_Angeles";
 
-    render(<LocalTodayRedirect period="7d" today={today} />);
+    render(
+      <LocalTodayRedirect
+        period="7d"
+        today={today}
+        questionType={QuestionType.DOCTRINE}
+      />,
+    );
 
     expect(mocks.replace).toHaveBeenCalledOnce();
     expect(mocks.replace).toHaveBeenCalledWith(
-      "/dashboard?period=7d&today=2026-08-23",
+      "/dashboard?period=7d&today=2026-08-23&questionType=doctrine",
       { scroll: false },
     );
     expect(screen.queryByText("Preparando seu desempenho...") !== null).toBe(preparing);
@@ -73,7 +93,13 @@ describe("LocalTodayRedirect", () => {
     vi.setSystemTime(new Date("2026-08-24T00:30:00.000Z"));
     process.env.TZ = "America/Los_Angeles";
 
-    render(<LocalTodayRedirect period="30d" today="2026-08-23" />);
+    render(
+      <LocalTodayRedirect
+        period="30d"
+        today="2026-08-23"
+        questionType={QuestionType.DOCTRINE}
+      />,
+    );
 
     expect(mocks.replace).not.toHaveBeenCalled();
     expect(screen.queryByText("Preparando seu desempenho...")).not.toBeInTheDocument();

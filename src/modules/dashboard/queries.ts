@@ -6,6 +6,7 @@ import {
   parseDashboardToday,
   type DashboardPeriod,
 } from "./period";
+import type { DashboardQuestionType } from "./question-type-filter";
 import { bigintToSafeInteger } from "./safe-integer";
 
 export type DashboardSubject = {
@@ -54,6 +55,7 @@ export async function getDashboard(
   userId: string,
   period: DashboardPeriod,
   today: string,
+  questionType: DashboardQuestionType,
 ): Promise<DashboardData> {
   const validToday = parseDashboardToday(today);
   if (!validToday) throw new Error("Data de referência inválida.");
@@ -61,10 +63,13 @@ export async function getDashboard(
   const dateFilter = startDate
     ? Prisma.sql`AND study_date BETWEEN ${startDate}::date AND ${validToday}::date`
     : Prisma.sql`AND study_date <= ${validToday}::date`;
+  const questionTypeFilter = questionType === "all"
+    ? Prisma.empty
+    : Prisma.sql`AND question_type = ${questionType}::"QuestionType"`;
   const rows = await prisma.$queryRaw<DashboardRow[]>(Prisma.sql`
     WITH filtered AS (
       SELECT * FROM study_sessions
-      WHERE user_id = ${userId} ${dateFilter}
+      WHERE user_id = ${userId} ${dateFilter} ${questionTypeFilter}
     ), latest AS (
       SELECT DISTINCT ON (subject_key) subject_key, subject
       FROM filtered

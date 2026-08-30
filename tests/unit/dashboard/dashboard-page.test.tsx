@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(protected)/dashboard/page";
+import { QuestionType } from "@/generated/prisma/enums";
 import type { DashboardData } from "@/modules/dashboard/queries";
 
 const dashboard: DashboardData = {
@@ -85,6 +86,49 @@ describe("DashboardPage", () => {
     );
   });
 
+  it("filters by question type and preserves the dashboard window in filter links", async () => {
+    const page = await DashboardPage({
+      searchParams: Promise.resolve({
+        period: "30d",
+        today: "2026-08-24",
+        questionType: "doctrine",
+      }),
+    });
+
+    render(page);
+
+    expect(mocks.getDashboard).toHaveBeenCalledWith(
+      "user-1",
+      "30d",
+      "2026-08-24",
+      QuestionType.DOCTRINE,
+    );
+    expect(screen.getByRole("link", { name: "Doutrina" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Lei Seca" })).toHaveAttribute(
+      "href",
+      "/dashboard?period=30d&today=2026-08-24&questionType=black-letter-law",
+    );
+    expect(screen.getByRole("link", { name: "90 dias" })).toHaveAttribute(
+      "href",
+      "/dashboard?period=90d&today=2026-08-24&questionType=doctrine",
+    );
+  });
+
+  it("defaults an invalid question type to all", async () => {
+    const page = await DashboardPage({
+      searchParams: Promise.resolve({
+        period: "30d",
+        today: "2026-08-24",
+        questionType: "invalid",
+      }),
+    });
+
+    render(page);
+
+    expect(mocks.getDashboard).toHaveBeenCalledWith("user-1", "30d", "2026-08-24", "all");
+    expect(screen.getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
+  });
+
   it("reconciles a valid stale query date from the rendered dashboard", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T12:00:00.000Z"));
@@ -95,7 +139,7 @@ describe("DashboardPage", () => {
     render(page);
 
     expect(mocks.replace).toHaveBeenCalledWith(
-      "/dashboard?period=90d&today=2026-08-24",
+      "/dashboard?period=90d&today=2026-08-24&questionType=all",
       { scroll: false },
     );
   });
@@ -118,7 +162,7 @@ describe("DashboardPage", () => {
     render(page);
     expect(screen.getByText("Preparando seu desempenho...")).toBeInTheDocument();
     expect(mocks.replace).toHaveBeenCalledWith(
-      `/dashboard?period=${period}&today=2026-08-24`,
+      `/dashboard?period=${period}&today=2026-08-24&questionType=all`,
       { scroll: false },
     );
   });
@@ -132,7 +176,7 @@ describe("DashboardPage", () => {
     await DashboardPage({ searchParams: Promise.resolve({ period, today }) });
 
     expect(mocks.getDashboard).toHaveBeenCalledOnce();
-    expect(mocks.getDashboard).toHaveBeenCalledWith("user-1", period, today);
+    expect(mocks.getDashboard).toHaveBeenCalledWith("user-1", period, today, "all");
   });
 
   it("propagates a dashboard query failure for a valid window", async () => {

@@ -76,7 +76,7 @@ describe("dashboard queries", () => {
       ],
     });
 
-    await expect(getDashboard(owner.id, "30d", "2026-08-23")).resolves.toEqual({
+    await expect(getDashboard(owner.id, "30d", "2026-08-23", "all")).resolves.toEqual({
       overall: {
         totalQuestions: 12,
         correctAnswers: 9,
@@ -95,6 +95,73 @@ describe("dashboard queries", () => {
           wrongPercentage: 25,
         },
       ],
+    });
+  });
+
+  it("filters all dashboard aggregates by question type and isolates the user", async () => {
+    const [owner, stranger] = await Promise.all([
+      prisma.user.create({ data: { email: "dashboard-filter-owner@example.com", passwordHash: "hash" } }),
+      prisma.user.create({ data: { email: "dashboard-filter-stranger@example.com", passwordHash: "hash" } }),
+    ]);
+    const studyDate = new Date("2026-08-23T00:00:00.000Z");
+    await prisma.studySession.createMany({
+      data: [
+        {
+          userId: owner.id,
+          studyDate,
+          subject: "Direito Civil",
+          subjectKey: "direito civil",
+          questionType: QuestionType.JURISPRUDENCE,
+          totalQuestions: 10,
+          correctAnswers: 8,
+          wrongAnswers: 2,
+        },
+        {
+          userId: owner.id,
+          studyDate,
+          subject: "Direito Penal",
+          subjectKey: "direito penal",
+          questionType: QuestionType.DOCTRINE,
+          totalQuestions: 20,
+          correctAnswers: 10,
+          wrongAnswers: 10,
+        },
+        {
+          userId: owner.id,
+          studyDate,
+          subject: "Direito Administrativo",
+          subjectKey: "direito administrativo",
+          questionType: QuestionType.UNSPECIFIED,
+          totalQuestions: 5,
+          correctAnswers: 3,
+          wrongAnswers: 2,
+        },
+        {
+          userId: stranger.id,
+          studyDate,
+          subject: "Direito Civil",
+          subjectKey: "direito civil",
+          questionType: QuestionType.JURISPRUDENCE,
+          totalQuestions: 100,
+          correctAnswers: 100,
+          wrongAnswers: 0,
+        },
+      ],
+    });
+
+    await expect(
+      getDashboard(owner.id, "30d", "2026-08-23", QuestionType.JURISPRUDENCE),
+    ).resolves.toMatchObject({
+      overall: { totalQuestions: 10, correctAnswers: 8, wrongAnswers: 2 },
+      subjects: [{ subject: "Direito Civil", totalQuestions: 10 }],
+    });
+    await expect(
+      getDashboard(owner.id, "30d", "2026-08-23", QuestionType.UNSPECIFIED),
+    ).resolves.toMatchObject({
+      overall: { totalQuestions: 5, correctAnswers: 3, wrongAnswers: 2 },
+    });
+    await expect(getDashboard(owner.id, "30d", "2026-08-23", "all")).resolves.toMatchObject({
+      overall: { totalQuestions: 35, correctAnswers: 21, wrongAnswers: 14 },
     });
   });
 
@@ -137,7 +204,7 @@ describe("dashboard queries", () => {
       ],
     });
 
-    const dashboard = await getDashboard(owner.id, "all", "2026-08-23");
+    const dashboard = await getDashboard(owner.id, "all", "2026-08-23", "all");
 
     expect(dashboard.subjects.map(({ subject }) => subject)).toEqual([
       "Direito Penal",
@@ -157,7 +224,7 @@ describe("dashboard queries", () => {
       data: { email: "dashboard-empty@example.com", passwordHash: "hash" },
     });
 
-    await expect(getDashboard(owner.id, "30d", "2026-08-23")).resolves.toEqual({
+    await expect(getDashboard(owner.id, "30d", "2026-08-23", "all")).resolves.toEqual({
       overall: {
         totalQuestions: 0,
         correctAnswers: 0,
@@ -187,7 +254,7 @@ describe("dashboard queries", () => {
 
     await createSession(owner.id, input);
     const history = await listSessions(owner.id, 1);
-    const dashboard = await getDashboard(owner.id, "all", "2026-08-23");
+    const dashboard = await getDashboard(owner.id, "all", "2026-08-23", "all");
 
     expect(history.records[0]).toMatchObject({ subject, subjectKey: "i̇".repeat(120) });
     expect(dashboard.overall).toMatchObject({
@@ -238,7 +305,7 @@ describe("dashboard queries", () => {
       ],
     });
 
-    const dashboard = await getDashboard(owner.id, "7d", "2026-08-23");
+    const dashboard = await getDashboard(owner.id, "7d", "2026-08-23", "all");
 
     expect(dashboard.subjects[0]).toMatchObject({
       subject: "Grafia Estável",
@@ -253,7 +320,7 @@ describe("dashboard queries", () => {
     const rawQuery = vi.spyOn(prisma, "$queryRaw");
     const aggregate = vi.spyOn(prisma.studySession, "aggregate");
 
-    await getDashboard(owner.id, "30d", "2026-08-23");
+    await getDashboard(owner.id, "30d", "2026-08-23", "all");
 
     expect(rawQuery).toHaveBeenCalledOnce();
     expect(aggregate).not.toHaveBeenCalled();
@@ -282,7 +349,7 @@ describe("dashboard queries", () => {
       FROM generate_series(1, 2148) AS value
     `;
 
-    const dashboard = await getDashboard(owner.id, "7d", "2026-08-23");
+    const dashboard = await getDashboard(owner.id, "7d", "2026-08-23", "all");
 
     expect(dashboard.overall).toMatchObject({
       totalQuestions: 2_148_000_000,
@@ -309,7 +376,7 @@ describe("dashboard queries", () => {
     });
 
     await expect(
-      getDashboard(owner.id, period as DashboardPeriod, today),
+      getDashboard(owner.id, period as DashboardPeriod, today, "all"),
     ).resolves.toMatchObject({
       overall: {
         totalQuestions: 0,
