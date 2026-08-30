@@ -11,17 +11,21 @@ const SIGNAL_STATUSES = {
 const GROUP_STOP_WAIT_MS = 1000;
 const POLL_INTERVAL_MS = 25;
 
-let groupPid;
+let groupOwnership;
 let receivedSignal;
 let terminateTimer;
 let killTimer;
 
-function signalGroup(signal) {
-  if (groupPid === undefined) {
+function ownsGroup(ownership) {
+  return ownership !== undefined && groupOwnership === ownership;
+}
+
+function signalGroup(ownership, signal) {
+  if (!ownsGroup(ownership)) {
     return;
   }
   try {
-    process.kill(-groupPid, signal);
+    process.kill(-ownership.pid, signal);
   } catch (error) {
     if (error.code !== 'ESRCH') {
       throw error;
@@ -29,9 +33,12 @@ function signalGroup(signal) {
   }
 }
 
-function groupExists() {
+function groupExists(ownership) {
+  if (!ownsGroup(ownership)) {
+    return false;
+  }
   try {
-    process.kill(-groupPid, 0);
+    process.kill(-ownership.pid, 0);
     return true;
   } catch (error) {
     if (error.code === 'ESRCH') {
@@ -41,19 +48,35 @@ function groupExists() {
   }
 }
 
-function scheduleEscalation() {
-  if (terminateTimer !== undefined) {
+function clearEscalationTimers() {
+  clearTimeout(terminateTimer);
+  clearTimeout(killTimer);
+  terminateTimer = undefined;
+  killTimer = undefined;
+}
+
+function finalizeGroup(ownership) {
+  if (!ownsGroup(ownership)) {
     return;
   }
-  terminateTimer = setTimeout(() => signalGroup('SIGTERM'), GROUP_STOP_WAIT_MS);
-  killTimer = setTimeout(() => signalGroup('SIGKILL'), GROUP_STOP_WAIT_MS * 2);
+  groupOwnership = undefined;
+  clearEscalationTimers();
+}
+
+function scheduleEscalation(ownership) {
+  if (!ownsGroup(ownership) || terminateTimer !== undefined) {
+    return;
+  }
+  terminateTimer = setTimeout(() => signalGroup(ownership, 'SIGTERM'), GROUP_STOP_WAIT_MS);
+  killTimer = setTimeout(() => signalGroup(ownership, 'SIGKILL'), GROUP_STOP_WAIT_MS * 2);
 }
 
 function relaySignal(signal) {
   receivedSignal ??= signal;
-  if (groupPid !== undefined) {
-    signalGroup(signal);
-    scheduleEscalation();
+  const ownership = groupOwnership;
+  if (ownership !== undefined) {
+    signalGroup(ownership, signal);
+    scheduleEscalation(ownership);
   }
 }
 
@@ -65,29 +88,32 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function waitForGroupExit() {
+async function waitForGroupExit(ownership) {
   for (let elapsed = 0; elapsed < GROUP_STOP_WAIT_MS; elapsed += POLL_INTERVAL_MS) {
-    if (!groupExists()) {
+    if (!groupExists(ownership)) {
       return true;
     }
     await delay(POLL_INTERVAL_MS);
   }
-  return !groupExists();
+  return !groupExists(ownership);
 }
 
-async function stopRemainingGroup() {
-  clearTimeout(terminateTimer);
-  clearTimeout(killTimer);
-  if (!groupExists()) {
-    return;
-  }
-  signalGroup('SIGTERM');
-  if (await waitForGroupExit()) {
-    return;
-  }
-  signalGroup('SIGKILL');
-  if (!(await waitForGroupExit())) {
-    throw new Error(`application process group ${groupPid} did not stop`);
+async function stopRemainingGroup(ownership) {
+  clearEscalationTimers();
+  try {
+    if (!groupExists(ownership)) {
+      return;
+    }
+    signalGroup(ownership, 'SIGTERM');
+    if (await waitForGroupExit(ownership)) {
+      return;
+    }
+    signalGroup(ownership, 'SIGKILL');
+    if (!(await waitForGroupExit(ownership))) {
+      throw new Error(`application process group ${ownership.pid} did not stop`);
+    }
+  } finally {
+    finalizeGroup(ownership);
   }
 }
 
@@ -101,21 +127,23 @@ async function main() {
     env: process.env,
     stdio: 'inherit',
   });
-  groupPid = child.pid;
-  if (groupPid === undefined || !groupExists()) {
+  const ownership = child.pid === undefined ? undefined : { pid: child.pid };
+  groupOwnership = ownership;
+  if (ownership === undefined || !groupExists(ownership)) {
     child.kill('SIGTERM');
+    finalizeGroup(ownership);
     throw new Error('failed to create the application process group');
   }
   if (receivedSignal !== undefined) {
-    signalGroup(receivedSignal);
-    scheduleEscalation();
+    signalGroup(ownership, receivedSignal);
+    scheduleEscalation(ownership);
   }
 
   const outcome = await new Promise((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', (status, signal) => resolve({ signal, status }));
   });
-  await stopRemainingGroup();
+  await stopRemainingGroup(ownership);
 
   if (receivedSignal !== undefined) {
     process.exitCode = SIGNAL_STATUSES[receivedSignal];

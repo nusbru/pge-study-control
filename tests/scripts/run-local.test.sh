@@ -13,6 +13,20 @@ set -eu
 printf 'npm|%s|%s|%s|%s|%s\n' \
   "${LOCAL_DB_PORT-}" "${APP_PORT-}" "${DATABASE_URL-}" "${AUTH_SECRET-}" "$*" \
   >> "$HARNESS_LOG"
+if [ "$*" = "${FAKE_SHUTDOWN_ARGS-}" ]; then
+  shutdown-waiter &
+  shutdown_pid=$!
+  shutdown_attempt=0
+  while [ ! -s "$SHUTDOWN_READY_FILE" ]; do
+    shutdown_attempt=$((shutdown_attempt + 1))
+    if [ "$shutdown_attempt" -ge 50 ]; then
+      kill -KILL "$shutdown_pid" 2>/dev/null || :
+      exit 1
+    fi
+    sleep 0.1
+  done
+  exit 0
+fi
 if [ "$*" = "${FAKE_WAIT_ARGS-}" ]; then
   printf '%s\n' "$$" > "$NPM_PID_FILE"
   trap 'printf "%s\n" HUP > "$NPM_SIGNAL_LOG"' HUP
@@ -51,6 +65,39 @@ for (const [signal, status] of [['SIGHUP', 129], ['SIGINT', 130], ['SIGTERM', 14
 setInterval(() => {}, 1000);
 JS
 chmod 755 "$FAKE_BIN/signal-waiter"
+
+cat > "$FAKE_BIN/shutdown-waiter" <<'JS'
+#!/usr/bin/env node
+const { writeFileSync } = require('node:fs');
+
+let stopping = false;
+process.on('SIGHUP', () => {});
+process.on('SIGINT', () => {});
+process.on('SIGTERM', () => {
+  if (stopping) {
+    return;
+  }
+  stopping = true;
+  writeFileSync(process.env.SHUTDOWN_STOPPING_FILE, `${process.pid}\n`);
+  setTimeout(() => process.exit(0), 300);
+});
+writeFileSync(process.env.SHUTDOWN_READY_FILE, `${process.pid}\n`);
+setInterval(() => {}, 1000);
+JS
+chmod 755 "$FAKE_BIN/shutdown-waiter"
+
+KILL_SPY="$TMP_DIR/kill-spy.cjs"
+cat > "$KILL_SPY" <<'JS'
+const { appendFileSync } = require('node:fs');
+
+const originalKill = process.kill.bind(process);
+process.kill = (pid, signal = 'SIGTERM') => {
+  if (pid < 0 && signal !== 0 && process.argv[1]?.endsWith('/scripts/run-local-app.mjs')) {
+    appendFileSync(process.env.SUPERVISOR_SIGNAL_LOG, `${signal}\n`);
+  }
+  return originalKill(pid, signal);
+};
+JS
 
 cat > "$FAKE_BIN/signal-launcher" <<'JS'
 #!/usr/bin/env node
@@ -216,6 +263,55 @@ run_signal_scenario() {
   [ "$down_count" -eq 1 ] || fail "sinal $signal_name executou $down_count limpezas"
 }
 
+run_timer_race_scenario() {
+  race_project="$TMP_DIR/timer-race-project"
+  prepare_project "$race_project"
+  race_log="$TMP_DIR/timer-race.log"
+  supervisor_signal_log="$TMP_DIR/timer-race.signals"
+  shutdown_ready_file="$TMP_DIR/timer-race.ready"
+  shutdown_stopping_file="$TMP_DIR/timer-race.stopping"
+
+  HARNESS_LOG="$race_log" \
+  SUPERVISOR_SIGNAL_LOG="$supervisor_signal_log" \
+  SHUTDOWN_READY_FILE="$shutdown_ready_file" \
+  SHUTDOWN_STOPPING_FILE="$shutdown_stopping_file" \
+  FAKE_SHUTDOWN_ARGS='run dev -- --port 3000' \
+  APP_PORT=3000 \
+  NODE_OPTIONS="--require=$KILL_SPY" \
+  PATH="$FAKE_BIN:$PATH" \
+    node "$race_project/scripts/run-local-app.mjs" &
+  supervisor_pid=$!
+
+  if ! wait_for_file "$shutdown_stopping_file"; then
+    kill -TERM "$supervisor_pid" 2>/dev/null || :
+    wait "$supervisor_pid" 2>/dev/null || :
+    fail 'supervisor nao iniciou a parada controlada do grupo'
+  fi
+  IFS= read -r shutdown_pid < "$shutdown_stopping_file"
+  kill -HUP "$supervisor_pid"
+
+  set +e
+  wait "$supervisor_pid"
+  supervisor_status=$?
+  set -e
+  [ "$supervisor_status" -eq 129 ] || fail "sinal tardio retornou $supervisor_status em vez de 129"
+  if kill -0 "$shutdown_pid" 2>/dev/null; then
+    kill -KILL "$shutdown_pid" 2>/dev/null || :
+    fail 'supervisor concluiu antes do descendente em parada'
+  fi
+
+  signal_line=0
+  while IFS= read -r group_signal; do
+    signal_line=$((signal_line + 1))
+    case $signal_line in
+      1) [ "$group_signal" = SIGTERM ] || fail "parada inicial usou $group_signal em vez de SIGTERM" ;;
+      2) [ "$group_signal" = SIGHUP ] || fail "sinal tardio usou $group_signal em vez de SIGHUP" ;;
+      *) fail "timer tardio sinalizou grupo encerrado com $group_signal" ;;
+    esac
+  done < "$supervisor_signal_log"
+  [ "$signal_line" -eq 2 ] || fail "cenario de timer registrou $signal_line sinais em vez de 2"
+}
+
 assert_failure_command() {
   failure_case=$1
   failure_line=$2
@@ -356,6 +452,7 @@ run_failure_scenario compose-startup 41 '' '' 41 91 2
 run_failure_scenario migration 42 'exec -- prisma migrate deploy' 42 '' 92 3
 run_failure_scenario cleanup 43 'run dev -- --port 3000' 43 '' 93 4
 
+run_timer_race_scenario
 run_signal_scenario HUP 129
 run_signal_scenario INT 130
 run_signal_scenario TERM 143
