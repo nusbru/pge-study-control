@@ -13,11 +13,44 @@ set -eu
 printf 'npm|%s|%s|%s|%s|%s\n' \
   "${LOCAL_DB_PORT-}" "${APP_PORT-}" "${DATABASE_URL-}" "${AUTH_SECRET-}" "$*" \
   >> "$HARNESS_LOG"
+if [ "$*" = "${FAKE_WAIT_ARGS-}" ]; then
+  exec signal-waiter
+fi
 if [ "$*" = "${FAKE_FAIL_ARGS-}" ]; then
   exit 37
 fi
 SH
 chmod 755 "$FAKE_BIN/npm"
+
+cat > "$FAKE_BIN/signal-waiter" <<'JS'
+#!/usr/bin/env node
+const { writeFileSync } = require('node:fs');
+
+writeFileSync(process.env.APP_PID_FILE, `${process.pid}\n`);
+for (const [signal, status] of [['SIGHUP', 129], ['SIGINT', 130], ['SIGTERM', 143]]) {
+  process.on(signal, () => {
+    writeFileSync(process.env.APP_SIGNAL_LOG, `${signal.slice(3)}\n`);
+    process.exit(status);
+  });
+}
+setInterval(() => {}, 1000);
+JS
+chmod 755 "$FAKE_BIN/signal-waiter"
+
+cat > "$FAKE_BIN/signal-launcher" <<'JS'
+#!/usr/bin/env node
+const { spawn } = require('node:child_process');
+const { writeFileSync } = require('node:fs');
+
+const child = spawn(process.argv[2], process.argv.slice(3), {
+  env: process.env,
+  stdio: 'inherit',
+});
+writeFileSync(process.env.RUNNER_PID_FILE, `${child.pid}\n`);
+child.on('error', () => process.exit(1));
+child.on('exit', (status) => process.exit(status === null ? 1 : status));
+JS
+chmod 755 "$FAKE_BIN/signal-launcher"
 
 cat > "$FAKE_BIN/docker" <<'SH'
 #!/bin/sh
@@ -38,6 +71,110 @@ prepare_project() {
   mkdir -p "$project/scripts"
   cp "$ROOT_DIR/scripts/run-local.sh" "$project/scripts/run-local.sh"
   cp "$ROOT_DIR/compose.dev.yaml" "$project/compose.dev.yaml"
+}
+
+wait_for_file() {
+  wait_file=$1
+  wait_attempt=0
+  while [ ! -s "$wait_file" ]; do
+    wait_attempt=$((wait_attempt + 1))
+    [ "$wait_attempt" -lt 50 ] || return 1
+    sleep 0.1
+  done
+}
+
+log_has_down() {
+  while IFS='|' read -r logged_command _ _ _ _ logged_arguments; do
+    if [ "$logged_command" = docker ]; then
+      case $logged_arguments in
+        *' down'|*' down '*) return 0 ;;
+      esac
+    fi
+  done < "$1"
+  return 1
+}
+
+wait_for_down() {
+  wait_log=$1
+  wait_attempt=0
+  while ! log_has_down "$wait_log"; do
+    wait_attempt=$((wait_attempt + 1))
+    [ "$wait_attempt" -lt 50 ] || return 1
+    sleep 0.1
+  done
+}
+
+run_signal_scenario() {
+  signal_name=$1
+  expected_status=$2
+  signal_project="$TMP_DIR/signal-$signal_name-project"
+  prepare_project "$signal_project"
+  mkdir "$signal_project/node_modules"
+  signal_log="$TMP_DIR/signal-$signal_name.log"
+  app_pid_file="$TMP_DIR/signal-$signal_name.pid"
+  app_signal_log="$TMP_DIR/signal-$signal_name.received"
+  runner_pid_file="$TMP_DIR/signal-$signal_name.runner"
+
+  HARNESS_LOG="$signal_log" \
+  APP_PID_FILE="$app_pid_file" \
+  APP_SIGNAL_LOG="$app_signal_log" \
+  RUNNER_PID_FILE="$runner_pid_file" \
+  FAKE_WAIT_ARGS='run dev -- --port 3000' \
+  PATH="$FAKE_BIN:$PATH" \
+    signal-launcher sh "$signal_project/scripts/run-local.sh" &
+  launcher_pid=$!
+
+  if ! wait_for_file "$runner_pid_file" || ! wait_for_file "$app_pid_file"; then
+    if [ -s "$runner_pid_file" ]; then
+      IFS= read -r runner_pid < "$runner_pid_file"
+      kill -TERM "$runner_pid" 2>/dev/null || :
+    fi
+    if [ -s "$app_pid_file" ]; then
+      IFS= read -r app_pid < "$app_pid_file"
+      kill -TERM "$app_pid" 2>/dev/null || :
+    fi
+    kill -TERM "$launcher_pid" 2>/dev/null || :
+    wait "$launcher_pid" 2>/dev/null || :
+    fail "aplicacao nao iniciou antes do sinal $signal_name"
+  fi
+  IFS= read -r runner_pid < "$runner_pid_file"
+  IFS= read -r app_pid < "$app_pid_file"
+  kill -"$signal_name" "$runner_pid"
+
+  if ! wait_for_down "$signal_log"; then
+    kill -TERM "$app_pid" 2>/dev/null || :
+    wait "$launcher_pid" 2>/dev/null || :
+    fail "sinal $signal_name nao acionou limpeza imediata"
+  fi
+
+  set +e
+  wait "$launcher_pid"
+  runner_status=$?
+  set -e
+  [ "$runner_status" -eq "$expected_status" ] || fail "sinal $signal_name retornou status $runner_status em vez de $expected_status"
+  [ -e "$app_signal_log" ] || fail "sinal $signal_name nao foi encaminhado para a aplicacao"
+  IFS= read -r received_signal < "$app_signal_log"
+  [ "$received_signal" = "$signal_name" ] || fail "sinal $signal_name foi encaminhado como $received_signal"
+  if kill -0 "$app_pid" 2>/dev/null; then
+    kill -KILL "$app_pid" 2>/dev/null || :
+    fail "sinal $signal_name deixou a aplicacao orfa"
+  fi
+
+  down_count=0
+  while IFS='|' read -r logged_command _ _ _ _ logged_arguments; do
+    if [ "$logged_command" = docker ]; then
+      case $logged_arguments in
+        *' down')
+          down_count=$((down_count + 1))
+          [ "$logged_arguments" = "compose -p pge-local -f $signal_project/compose.dev.yaml down" ] || fail "limpeza do sinal $signal_name recebeu argumentos incorretos"
+          ;;
+      esac
+    fi
+    case $logged_arguments in
+      *' down -v'|*' down --volumes'*) fail "limpeza do sinal $signal_name tentou remover o volume" ;;
+    esac
+  done < "$signal_log"
+  [ "$down_count" -eq 1 ] || fail "sinal $signal_name executou $down_count limpezas"
 }
 
 default_project="$TMP_DIR/default-project"
@@ -116,5 +253,9 @@ while IFS='|' read -r command db_port app_port database_url auth_secret argument
   esac
 done < "$override_log"
 [ "$override_line" -eq 4 ] || fail 'fluxo com override nao executou quatro comandos'
+
+run_signal_scenario HUP 129
+run_signal_scenario INT 130
+run_signal_scenario TERM 143
 
 printf '%s\n' 'PASS: desenvolvimento local ordena comandos, preserva configuracao, status e dados'
