@@ -31,6 +31,7 @@ export default async function EditSessionPage({ params }: EditSessionPageProps) 
           defaultValues={{
             studyDate,
             subject: session.subject,
+            questionType: session.questionType,
             totalQuestions: session.totalQuestions,
             correctAnswers: session.correctAnswers,
             wrongAnswers: session.wrongAnswers,
