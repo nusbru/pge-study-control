@@ -100,6 +100,7 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
               </div>
 
               <div className={styles.itemActions}>
+                <Link href={`/sessions/${session.id}`}>Ver detalhes</Link>
                 <Link href={`/sessions/${session.id}/edit`}>Editar</Link>
                 <DeleteSessionForm session={session} />
               </div>

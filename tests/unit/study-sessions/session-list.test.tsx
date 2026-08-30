@@ -56,4 +56,19 @@ describe("SessionList", () => {
     expect(screen.getByText("2 (66,7%)")).toBeVisible();
     expect(screen.getByText("1 (33,3%)")).toBeVisible();
   });
+
+  it("links each listed session to its details page", () => {
+    render(
+      <SessionList
+        sessions={[session({ id: "session-details" })]}
+        page={1}
+        totalPages={1}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Ver detalhes" })).toHaveAttribute(
+      "href",
+      "/sessions/session-details",
+    );
+  });
 });
