@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { QuestionType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
   createSession,
@@ -23,6 +24,7 @@ describe("study session repository", () => {
       studyDate: "2026-08-23",
       subject: "Direito Civil",
       subjectKey: "direito civil",
+      questionType: QuestionType.JURISPRUDENCE,
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
@@ -34,10 +36,12 @@ describe("study session repository", () => {
     await expect(updateSession(stranger.id, session.id, {
       ...session,
       studyDate: "2026-08-23",
+      questionType: QuestionType.JURISPRUDENCE,
     })).resolves.toBeNull();
     await expect(deleteSession(stranger.id, session.id)).resolves.toBe(false);
     await expect(getSession(owner.id, session.id)).resolves.toMatchObject({
       subject: "Direito Civil",
+      questionType: QuestionType.JURISPRUDENCE,
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
@@ -52,6 +56,7 @@ describe("study session repository", () => {
       studyDate: "2026-08-23",
       subject: "Direito Civil",
       subjectKey: "direito civil",
+      questionType: QuestionType.JURISPRUDENCE,
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
@@ -63,6 +68,7 @@ describe("study session repository", () => {
       studyDate: "2026-08-24",
       subject: "Direito Constitucional",
       subjectKey: "direito constitucional",
+      questionType: QuestionType.DOCTRINE,
       totalQuestions: 60,
       correctAnswers: 40,
       wrongAnswers: 20,
@@ -74,6 +80,7 @@ describe("study session repository", () => {
       id: session.id,
       userId: owner.id,
       subject: "Direito Constitucional",
+      questionType: QuestionType.DOCTRINE,
       totalQuestions: 60,
     });
     expect(updated?.studyDate.toISOString()).toBe("2026-08-24T00:00:00.000Z");
@@ -94,6 +101,7 @@ describe("study session repository", () => {
         studyDate: new Date(`2026-08-${day}T00:00:00.000Z`),
         subject: `Assunto ${day}`,
         subjectKey: `assunto ${day}`,
+        questionType: QuestionType.JURISPRUDENCE,
         totalQuestions: 10,
         correctAnswers: 7,
         wrongAnswers: 3,
@@ -107,6 +115,7 @@ describe("study session repository", () => {
         studyDate: new Date(`2026-09-${day}T00:00:00.000Z`),
         subject: `Sessão alheia ${day}`,
         subjectKey: `sessao alheia ${day}`,
+        questionType: QuestionType.JURISPRUDENCE,
         totalQuestions: 10,
         correctAnswers: 7,
         wrongAnswers: 3,
@@ -122,6 +131,7 @@ describe("study session repository", () => {
           createdAt: new Date("2026-08-20T02:00:00.000Z"),
           subject: "Empate A",
           subjectKey: "empate a",
+          questionType: QuestionType.JURISPRUDENCE,
           totalQuestions: 10,
           correctAnswers: 7,
           wrongAnswers: 3,
@@ -133,6 +143,7 @@ describe("study session repository", () => {
           createdAt: new Date("2026-08-20T02:00:00.000Z"),
           subject: "Empate Z",
           subjectKey: "empate z",
+          questionType: QuestionType.JURISPRUDENCE,
           totalQuestions: 10,
           correctAnswers: 7,
           wrongAnswers: 3,
@@ -165,11 +176,27 @@ describe("study session repository", () => {
         studyDate: new Date("2026-08-23T00:00:00.000Z"),
         subject: "Direito Civil",
         subjectKey: "direito civil",
+        questionType: QuestionType.JURISPRUDENCE,
         totalQuestions: 50,
         correctAnswers: 40,
         wrongAnswers: 20,
       },
     })).rejects.toThrow();
     await expect(prisma.studySession.count()).resolves.toBe(0);
+  });
+
+  it("keeps question type required without a database default", async () => {
+    const [questionTypeColumn] = await prisma.$queryRaw<Array<{
+      is_nullable: "YES" | "NO";
+      column_default: string | null;
+    }>>`
+      SELECT is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'study_sessions'
+        AND column_name = 'question_type'
+    `;
+
+    expect(questionTypeColumn).toEqual({ is_nullable: "NO", column_default: null });
   });
 });

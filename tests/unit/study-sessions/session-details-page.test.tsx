@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StudySession } from "@/generated/prisma/client";
+import { QuestionType } from "@/generated/prisma/enums";
 import SessionDetailsPage from "@/app/(protected)/sessions/[id]/page";
 
 const mocks = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const studySession: StudySession = {
   studyDate: new Date("2026-08-23T00:00:00.000Z"),
   subject: "Direito Civil",
   subjectKey: "direito civil",
+  questionType: QuestionType.JURISPRUDENCE,
   totalQuestions: 50,
   correctAnswers: 30,
   wrongAnswers: 20,

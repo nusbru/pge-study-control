@@ -4,6 +4,7 @@ import { studySessionInputSchema } from "@/modules/study-sessions/schema";
 const valid = {
   studyDate: "2026-08-23",
   subject: "Direito Constitucional",
+  questionType: "JURISPRUDENCE",
   totalQuestions: "50",
   correctAnswers: "30",
   wrongAnswers: "",
@@ -24,12 +25,31 @@ describe("studySessionInputSchema", () => {
       studyDate: "2026-08-23",
       subject: "Direito Constitucional",
       subjectKey: "direito constitucional",
+      questionType: "JURISPRUDENCE",
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
       wrongQuestionListUrl: null,
     });
   });
+
+  it.each(["JURISPRUDENCE", "BLACK_LETTER_LAW", "DOCTRINE"])(
+    "accepts editable question type %s",
+    (questionType) => {
+      expect(studySessionInputSchema.parse({ ...valid, questionType })).toMatchObject({ questionType });
+    },
+  );
+
+  it.each([undefined, "", "UNSPECIFIED", "UNKNOWN"])(
+    "rejects non-editable question type %j",
+    (questionType) => {
+      expectFieldError(
+        { ...valid, questionType },
+        "questionType",
+        "Selecione o tipo de questão.",
+      );
+    },
+  );
 
   it.each(["javascript:alert(1)", "ftp://example.com/a", "not-a-url"])("rejects unsafe URL %s", (url) => {
     expectFieldError(
