@@ -82,12 +82,21 @@ test("core pages remain responsive and accessible", async ({ page }) => {
     await test.step(`${viewport.name} new session`, async () => {
       await page.goto("/sessions/new");
       await expect(page.getByRole("heading", { name: "Nova sessão" })).toBeVisible();
+      await expect(page.getByRole("radio", { name: "Jurisprudência" })).toBeVisible();
+      await expect(page.getByRole("radio", { name: "Lei Seca" })).toBeVisible();
+      await expect(page.getByRole("radio", { name: "Doutrina" })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} new session`);
+      await expectKeyboardFocusVisible(
+        page,
+        page.getByRole("radio", { name: "Jurisprudência" }),
+        `${viewport.name} question type radio`,
+      );
     });
 
     await createSession(page, {
       studyDate: controlledToday,
       subject: `Acessibilidade ${viewport.name}`,
+      questionType: "Jurisprudência",
       totalQuestions: "10",
       correctAnswers: "6",
     });
@@ -111,6 +120,8 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
       await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
       await expect(page.getByRole("heading", { name: "Desempenho", exact: true })).toBeVisible();
+      const typeFilters = page.getByRole("navigation", { name: "Filtrar tipo de questão" });
+      await expect(typeFilters).toBeVisible();
       await expect(page.getByRole("img", {
         name: `Acessibilidade ${viewport.name}: 60,0% de acertos e 40,0% de erros em 10 questões`,
       })).toBeVisible();
@@ -119,6 +130,11 @@ test("core pages remain responsive and accessible", async ({ page }) => {
         page,
         page.getByRole("link", { name: "30 dias", exact: true }),
         `${viewport.name} period filter`,
+      );
+      await expectKeyboardFocusVisible(
+        page,
+        typeFilters.getByRole("link", { name: "Jurisprudência" }),
+        `${viewport.name} question type filter`,
       );
     });
 
@@ -135,6 +151,7 @@ test("a 120-character unbroken subject does not overflow mobile history", async 
   await createSession(page, {
     studyDate: controlledToday,
     subject,
+    questionType: "Doutrina",
     totalQuestions: "10",
     correctAnswers: "6",
   });

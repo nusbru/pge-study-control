@@ -64,7 +64,7 @@ describe("new-session local date", () => {
       <SessionForm
         action={mocks.createSessionAction}
         defaultStudyDate="2026-08-24"
-        defaultValues={{ studyDate: "2026-08-24" }}
+        defaultValues={{ studyDate: "2026-08-24", questionType: "BLACK_LETTER_LAW" }}
       />
     );
     const container = document.createElement("div");
@@ -73,6 +73,7 @@ describe("new-session local date", () => {
     const serverSubmit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
     expect(serverSubmit).toBeEnabled();
     expect(serverSubmit).toHaveTextContent("Salvar sessão");
+    expect(container.querySelector('input[name="questionType"][value="BLACK_LETTER_LAW"]')).toBeChecked();
 
     let root!: Root;
     await act(async () => {
@@ -80,9 +81,25 @@ describe("new-session local date", () => {
     });
 
     expect(container.querySelector('input[name="studyDate"]')).toHaveValue("2026-08-24");
+    expect(container.querySelector('input[name="questionType"][value="BLACK_LETTER_LAW"]')).toBeChecked();
     expect(container.querySelector('button[type="submit"]')).toBeEnabled();
 
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it("leaves every editable question type unchecked for legacy sessions", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(
+      <SessionForm
+        action={mocks.createSessionAction}
+        defaultStudyDate="2026-08-24"
+        defaultValues={{ questionType: "UNSPECIFIED" }}
+      />,
+    );
+
+    const radios = container.querySelectorAll('input[name="questionType"]');
+    expect(radios).toHaveLength(3);
+    radios.forEach((radio) => expect(radio).not.toBeChecked());
   });
 });

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QuestionType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import {
   createSessionAction,
@@ -22,6 +23,7 @@ function sessionFormData(overrides: Record<string, string> = {}) {
   const values = {
     studyDate: "2026-08-23",
     subject: "  Direito   Civil  ",
+    questionType: "JURISPRUDENCE",
     totalQuestions: "50",
     correctAnswers: "30",
     wrongAnswers: "",
@@ -43,6 +45,7 @@ async function createOwnedSession(userId: string) {
     studyDate: "2026-08-22",
     subject: "Direito Administrativo",
     subjectKey: "direito administrativo",
+    questionType: QuestionType.JURISPRUDENCE,
     totalQuestions: 40,
     correctAnswers: 25,
     wrongAnswers: 15,
@@ -71,6 +74,7 @@ describe("study session actions", () => {
     await expect(prisma.studySession.findFirst({ where: { userId: user.id } })).resolves.toMatchObject({
       subject: "Direito Civil",
       subjectKey: "direito civil",
+      questionType: QuestionType.JURISPRUDENCE,
       totalQuestions: 50,
       correctAnswers: 30,
       wrongAnswers: 20,
@@ -113,11 +117,16 @@ describe("study session actions", () => {
     await expect(updateSessionAction(
       session.id,
       {},
-      sessionFormData({ subject: "Direito Constitucional", correctAnswers: "35" }),
+      sessionFormData({
+        subject: "Direito Constitucional",
+        questionType: "DOCTRINE",
+        correctAnswers: "35",
+      }),
     )).rejects.toBe(redirectError);
 
     await expect(prisma.studySession.findUnique({ where: { id: session.id } })).resolves.toMatchObject({
       subject: "Direito Constitucional",
+      questionType: QuestionType.DOCTRINE,
       correctAnswers: 35,
       wrongAnswers: 15,
     });

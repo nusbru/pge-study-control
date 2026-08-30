@@ -16,6 +16,14 @@ function renderForm(
 }
 
 describe("SessionForm", () => {
+  it("renders every editable question type with no initial selection", () => {
+    renderForm();
+
+    expect(screen.getByRole("radio", { name: "Jurisprudência" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Lei Seca" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Doutrina" })).not.toBeChecked();
+  });
+
   it("calculates errors from total and correct answers", async () => {
     const user = userEvent.setup();
     renderForm();
@@ -116,9 +124,11 @@ describe("SessionForm", () => {
   it("restores values returned by the server after a failed submission", async () => {
     const action = vi.fn(async (): Promise<SessionActionState> => ({
       formError: "Revise os dados informados.",
+      fieldErrors: { questionType: ["Selecione o tipo de questão."] },
       values: {
         studyDate: "2026-08-20",
         subject: "Direito Tributário",
+        questionType: "DOCTRINE",
         totalQuestions: "80",
         correctAnswers: "50",
         wrongAnswers: "30",
@@ -130,9 +140,14 @@ describe("SessionForm", () => {
     renderForm(action);
 
     await user.type(screen.getByLabelText("Assunto"), "rascunho");
+    await user.click(screen.getByRole("radio", { name: "Jurisprudência" }));
     await user.click(screen.getByRole("button", { name: "Salvar sessão" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Revise os dados informados.");
+    expect(screen.getByRole("radio", { name: "Doutrina" })).toBeChecked();
+    expect(screen.getByRole("group", { name: "Tipo de questão" })).toHaveAccessibleDescription(
+      "Selecione o tipo de questão.",
+    );
     expect(screen.getByLabelText("Data do estudo")).toHaveValue("2026-08-20");
     expect(screen.getByLabelText("Assunto")).toHaveValue("Direito Tributário");
     expect(screen.getByLabelText("Total de questões")).toHaveValue(80);

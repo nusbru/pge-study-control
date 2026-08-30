@@ -3,14 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { DashboardPeriod } from "./period";
+import {
+  serializeDashboardQuestionType,
+  type DashboardQuestionType,
+} from "./question-type-filter";
 import styles from "./dashboard.module.css";
 
 type LocalTodayRedirectProps = {
   period: DashboardPeriod;
   today?: string | null;
+  questionType: DashboardQuestionType;
 };
 
-export function LocalTodayRedirect({ period, today }: Readonly<LocalTodayRedirectProps>) {
+export function LocalTodayRedirect({
+  period,
+  today,
+  questionType,
+}: Readonly<LocalTodayRedirectProps>) {
   const router = useRouter();
 
   useEffect(() => {
@@ -21,9 +30,13 @@ export function LocalTodayRedirect({ period, today }: Readonly<LocalTodayRedirec
       String(now.getDate()).padStart(2, "0"),
     ].join("-");
     if (today === localToday) return;
-    const query = new URLSearchParams({ period, today: localToday });
+    const query = new URLSearchParams({
+      period,
+      today: localToday,
+      questionType: serializeDashboardQuestionType(questionType),
+    });
     router.replace(`/dashboard?${query.toString()}`, { scroll: false });
-  }, [period, router, today]);
+  }, [period, questionType, router, today]);
 
   if (today) return null;
 

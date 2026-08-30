@@ -10,10 +10,17 @@
   border-bottom: 1px solid var(--line);
 }
 
-.identity time {
-  display: block;
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
   margin-bottom: 0.4rem;
+}
+
+.identity time,
+.questionType {
   color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 0.875rem;
 }
 

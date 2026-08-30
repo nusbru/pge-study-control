@@ -21,6 +21,14 @@
   font-size: 0.875rem;
 }
 
+.questionType {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+}
+
 .identity {
   min-width: 0;
 }

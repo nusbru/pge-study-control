@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StudySession } from "@/generated/prisma/client";
+import { QuestionType } from "@/generated/prisma/enums";
 import SessionDetailsPage from "@/app/(protected)/sessions/[id]/page";
 
 const mocks = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const studySession: StudySession = {
   studyDate: new Date("2026-08-23T00:00:00.000Z"),
   subject: "Direito Civil",
   subjectKey: "direito civil",
+  questionType: QuestionType.JURISPRUDENCE,
   totalQuestions: 50,
   correctAnswers: 30,
   wrongAnswers: 20,
@@ -61,6 +63,7 @@ describe("SessionDetailsPage", () => {
     expect(mocks.getSession).toHaveBeenCalledWith("user-1", "session-1");
     expect(screen.getByRole("heading", { name: "Direito Civil" })).toBeVisible();
     expect(screen.getByText("23/08/2026")).toBeVisible();
+    expect(screen.getByText("Jurisprudência")).toBeVisible();
     expect(screen.getByText("30 (60,0%)")).toBeVisible();
     expect(screen.getByText("20 (40,0%)")).toBeVisible();
     expect(screen.getByText("50")).toBeVisible();
@@ -87,6 +90,20 @@ describe("SessionDetailsPage", () => {
       "href",
       "/sessions",
     );
+  });
+
+  it("shows the legacy unspecified question type", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      ...studySession,
+      questionType: QuestionType.UNSPECIFIED,
+    });
+    const page = await SessionDetailsPage({
+      params: Promise.resolve({ id: "session-1" }),
+    });
+
+    render(page);
+
+    expect(screen.getByText("Não informado")).toBeVisible();
   });
 
   it("omits the materials section when the session has no external links", async () => {

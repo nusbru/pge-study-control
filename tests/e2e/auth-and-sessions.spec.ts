@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import {
   browserContextOptionsForProject,
   controlledToday,
@@ -14,19 +14,32 @@ const countFields = {
   wrong: { name: "Erros", value: "20" },
 } as const;
 
+async function expectDashboardUrl(page: Page, questionType: "jurisprudence" | "doctrine" | "all") {
+  await expect(page).toHaveURL((url) => url.pathname === "/dashboard"
+    && url.searchParams.get("period") === "30d"
+    && url.searchParams.get("today") === controlledToday
+    && url.searchParams.get("questionType") === questionType);
+}
+
 test("candidate registers, records, edits, and deletes a study session", async ({ page }) => {
   await registerAndLogin(page, "complete-flow");
 
   await page.getByRole("link", { name: "Nova sessão" }).click();
   await page.getByLabel("Data do estudo").fill(controlledToday);
   await page.getByLabel("Assunto").fill("Direito Constitucional");
+  await page.getByRole("radio", { name: "Jurisprudência" }).check();
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill("50");
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill("30");
   await expect(page.getByRole("spinbutton", { name: "Erros", exact: true })).toHaveValue("20");
   await page.getByRole("button", { name: "Salvar sessão" }).click();
 
   await expect(page).toHaveURL(/\/sessions$/);
-  await expect(page.getByRole("heading", { name: "Direito Constitucional" })).toBeVisible();
+  const createdSession = page.getByRole("listitem").filter({ hasText: "Direito Constitucional" });
+  await expect(createdSession).toContainText("Jurisprudência");
+
+  await createdSession.getByRole("link", { name: "Ver detalhes" }).click();
+  await expect(page.getByRole("heading", { name: "Detalhes da sessão" })).toBeVisible();
+  await expect(page.getByText("Jurisprudência", { exact: true })).toBeVisible();
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
   await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
@@ -36,8 +49,9 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await expect(subjectPerformance).toContainText("20 erros");
 
   await page.goto("/sessions");
-  const session = page.getByRole("listitem").filter({ hasText: "Direito Constitucional" });
-  await session.getByRole("link", { name: "Editar" }).click();
+  await page.getByRole("listitem").filter({ hasText: "Direito Constitucional" })
+    .getByRole("link", { name: "Editar" }).click();
+  await expect(page.getByRole("radio", { name: "Jurisprudência" })).toBeChecked();
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill("40");
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill("30");
   await page.getByRole("spinbutton", { name: "Erros", exact: true }).fill("10");
@@ -60,6 +74,19 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await expect(page.getByRole("heading", { name: "Seu histórico começa com uma sessão" })).toBeVisible();
 });
 
+test("requires a question type when creating a study session", async ({ page }) => {
+  await registerAndLogin(page, "required-question-type");
+  await page.goto("/sessions/new");
+  await page.getByLabel("Data do estudo").fill(controlledToday);
+  await page.getByLabel("Assunto").fill("Sessão sem tipo");
+  await page.getByLabel("Total de questões").fill("10");
+  await page.getByLabel("Acertos").fill("6");
+  await page.getByRole("button", { name: "Salvar sessão" }).click();
+
+  await expect(page).toHaveURL(/\/sessions\/new$/);
+  await expect(page.getByText("Selecione o tipo de questão.").first()).toBeVisible();
+});
+
 for (const scenario of [
   { missing: "wrong", provided: ["total", "correct"] },
   { missing: "correct", provided: ["total", "wrong"] },
@@ -80,6 +107,7 @@ for (const scenario of [
     await page.getByLabel("Data do estudo").fill(controlledToday);
     const subject = `Cálculo ${scenario.missing}`;
     await page.getByLabel("Assunto").fill(subject);
+    await page.getByRole("radio", { name: "Lei Seca" }).check();
     await page.getByRole("button", { name: "Salvar sessão" }).click();
 
     const persisted = page.getByRole("listitem").filter({ hasText: subject });
@@ -96,6 +124,7 @@ test("rejects inconsistent question counts without clearing entered values", asy
   await page.goto("/sessions/new");
   await page.getByLabel("Data do estudo").fill(controlledToday);
   await page.getByLabel("Assunto").fill("Direito Administrativo");
+  await page.getByRole("radio", { name: "Doutrina" }).check();
 
   const total = page.getByRole("spinbutton", { name: "Total de questões", exact: true });
   const correct = page.getByRole("spinbutton", { name: "Acertos", exact: true });
@@ -123,6 +152,7 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
   await createSession(page, {
     studyDate: controlledToday,
     subject: "Recursos seguros",
+    questionType: "Lei Seca",
     totalQuestions: "10",
     correctAnswers: "6",
     questionListUrl: questionUrl,
@@ -149,12 +179,14 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
   await createSession(page, {
     studyDate: controlledToday,
     subject: "Sessão atual",
+    questionType: "Jurisprudência",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
     studyDate: "2025-03-01",
     subject: "Sessão antiga",
+    questionType: "Doutrina",
     totalQuestions: "20",
     correctAnswers: "10",
   });
@@ -169,17 +201,69 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sessão antiga" })).toBeVisible();
 });
 
+test("dashboard filters sessions by question type and preserves the date window", async ({ page }) => {
+  await registerAndLogin(page, "dashboard-question-types");
+  await createSession(page, {
+    studyDate: controlledToday,
+    subject: "Controle concentrado",
+    questionType: "Jurisprudência",
+    totalQuestions: "10",
+    correctAnswers: "8",
+  });
+  await createSession(page, {
+    studyDate: "2025-03-01",
+    subject: "Jurisprudência histórica",
+    questionType: "Jurisprudência",
+    totalQuestions: "40",
+    correctAnswers: "30",
+  });
+  await createSession(page, {
+    studyDate: controlledToday,
+    subject: "Teoria constitucional",
+    questionType: "Doutrina",
+    totalQuestions: "20",
+    correctAnswers: "10",
+  });
+
+  await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
+  const typeFilters = page.getByRole("navigation", { name: "Filtrar tipo de questão" });
+  const summary = page.getByRole("region", { name: "Período e resumo do desempenho" });
+  const totalQuestions = summary.getByText("Questões").locator("xpath=following-sibling::dd");
+
+  await typeFilters.getByRole("link", { name: "Jurisprudência" }).click();
+  await expectDashboardUrl(page, "jurisprudence");
+  await expect(totalQuestions).toHaveText("10");
+  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toHaveCount(0);
+
+  await typeFilters.getByRole("link", { name: "Doutrina" }).click();
+  await expectDashboardUrl(page, "doctrine");
+  await expect(totalQuestions).toHaveText("20");
+  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
+
+  await typeFilters.getByRole("link", { name: "Todos" }).click();
+  await expectDashboardUrl(page, "all");
+  await expect(totalQuestions).toHaveText("30");
+  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
+});
+
 test("dashboard groups subjects after case and whitespace normalization", async ({ page }) => {
   await registerAndLogin(page, "dashboard-grouping");
   await createSession(page, {
     studyDate: "2025-04-09",
     subject: "Direito Civil",
+    questionType: "Jurisprudência",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
     studyDate: controlledToday,
     subject: "direito   civil",
+    questionType: "Jurisprudência",
     totalQuestions: "20",
     correctAnswers: "10",
   });
@@ -200,6 +284,7 @@ test("another authenticated user receives not found for an edit URL", async ({ p
   await createSession(page, {
     studyDate: controlledToday,
     subject: "Sessão privada",
+    questionType: "Doutrina",
     totalQuestions: "10",
     correctAnswers: "7",
   });

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState, type FormEvent } from "react";
 import { formatPercentage, percentage, resolveQuestionCounts } from "./domain";
 import type { SessionActionState } from "./actions";
+import { editableQuestionTypes, isEditableQuestionType, questionTypeLabels } from "./question-type";
 import styles from "./session-form.module.css";
 
 type CountField = "totalQuestions" | "correctAnswers" | "wrongAnswers";
@@ -11,6 +12,7 @@ type CountField = "totalQuestions" | "correctAnswers" | "wrongAnswers";
 type FormValues = {
   studyDate: string;
   subject: string;
+  questionType: string;
   totalQuestions: string;
   correctAnswers: string;
   wrongAnswers: string;
@@ -39,6 +41,7 @@ function initialValues(defaultStudyDate?: string, defaults: SessionFormDefaults 
   return {
     studyDate: toString(defaults.studyDate) || defaultStudyDate || "",
     subject: toString(defaults.subject),
+    questionType: isEditableQuestionType(defaults.questionType) ? defaults.questionType : "",
     totalQuestions: toString(defaults.totalQuestions),
     correctAnswers: toString(defaults.correctAnswers),
     wrongAnswers: toString(defaults.wrongAnswers),
@@ -105,6 +108,12 @@ export function SessionForm({
     setDraft({ actionValues: state.values, values: nextValues });
   }
 
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
   function setCalculatedField(field: CountField | null) {
     setCalculation({ actionValues: state.values, field });
   }
@@ -162,7 +171,12 @@ export function SessionForm({
   }
 
   return (
-    <form className={styles.form} action={formAction} noValidate>
+    <form
+      className={styles.form}
+      action={formAction}
+      noValidate
+      onSubmit={submit}
+    >
       {state.formError && (
         <p className={styles.formError} role="alert">{state.formError}</p>
       )}
@@ -199,6 +213,34 @@ export function SessionForm({
           {fieldError("subject") && <p className={styles.fieldError} id="subject-error">{fieldError("subject")}</p>}
         </div>
       </div>
+
+      <fieldset
+        className={styles.typeSection}
+        aria-invalid={fieldError("questionType") ? true : undefined}
+        aria-describedby={fieldError("questionType") ? "questionType-error" : undefined}
+      >
+        <legend>Tipo de questão</legend>
+        <div className={styles.typeOptions}>
+          {editableQuestionTypes.map((questionType) => (
+            <label key={questionType}>
+              <input
+                name="questionType"
+                type="radio"
+                required
+                value={questionType}
+                checked={values.questionType === questionType}
+                onChange={(event) => setValues({ ...values, questionType: event.target.value })}
+              />
+              <span>{questionTypeLabels[questionType]}</span>
+            </label>
+          ))}
+        </div>
+        {fieldError("questionType") && (
+          <p className={styles.fieldError} id="questionType-error">
+            {fieldError("questionType")}
+          </p>
+        )}
+      </fieldset>
 
       <fieldset className={styles.countSection} aria-describedby={countError ? "question-count-error" : undefined}>
         <legend>Desempenho</legend>

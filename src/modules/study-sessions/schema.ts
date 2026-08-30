@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { normalizeSubject, resolveQuestionCounts } from "./domain";
+import { editableQuestionTypes } from "./question-type";
 
 const COUNT_ERROR = "Use números inteiros entre 0 e 1.000.000.";
 const DATE_ERROR = "Informe uma data válida.";
+const QUESTION_TYPE_ERROR = "Selecione o tipo de questão.";
 const SUBJECT_ERROR = "Informe um assunto com até 120 caracteres.";
 const URL_ERROR = "Informe uma URL HTTP ou HTTPS válida.";
 
@@ -22,6 +24,8 @@ const optionalHttpUrl = z.preprocess(
     catch { return false; }
   }, URL_ERROR).nullable(),
 );
+
+const editableQuestionType = z.enum(editableQuestionTypes, { error: QUESTION_TYPE_ERROR });
 
 const normalizedSubject = z.string({ error: SUBJECT_ERROR }).transform((value, context) => {
   try {
@@ -48,6 +52,7 @@ function isCalendarDate(value: string) {
 const rawStudySessionSchema = z.object({
   studyDate: z.string({ error: DATE_ERROR }).refine(isCalendarDate, DATE_ERROR),
   subject: normalizedSubject,
+  questionType: editableQuestionType,
   totalQuestions: optionalCount,
   correctAnswers: optionalCount,
   wrongAnswers: optionalCount,
@@ -59,6 +64,7 @@ export const studySessionInputSchema = rawStudySessionSchema.transform((data, co
   try {
     return {
       studyDate: data.studyDate,
+      questionType: data.questionType,
       ...data.subject,
       ...resolveQuestionCounts({
         totalQuestions: data.totalQuestions,

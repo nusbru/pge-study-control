@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUserId } from "@/lib/auth-user";
 import { formatPercentage, percentage } from "@/modules/study-sessions/domain";
+import { questionTypeLabels } from "@/modules/study-sessions/question-type";
 import { getSession } from "@/modules/study-sessions/repository";
 import styles from "./session-details.module.css";
 
@@ -39,9 +40,14 @@ export default async function SessionDetailsPage({ params }: SessionDetailsPageP
 
       <section className={styles.panel} aria-labelledby="session-subject">
         <div className={styles.identity}>
-          <time dateTime={session.studyDate.toISOString().slice(0, 10)}>
-            {dateFormatter.format(session.studyDate)}
-          </time>
+          <div className={styles.metadata}>
+            <time dateTime={session.studyDate.toISOString().slice(0, 10)}>
+              {dateFormatter.format(session.studyDate)}
+            </time>
+            <span className={styles.questionType}>
+              {questionTypeLabels[session.questionType]}
+            </span>
+          </div>
           <h2 id="session-subject">{session.subject}</h2>
         </div>
 

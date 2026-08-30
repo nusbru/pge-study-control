@@ -65,6 +65,7 @@
 }
 
 .field label,
+.typeSection legend,
 .countSection legend,
 .linksSection legend {
   color: var(--ink);
@@ -86,6 +87,7 @@
 }
 
 .field input:focus-visible,
+.typeOptions input:focus-visible,
 .actions button:focus-visible,
 .actions a:focus-visible {
   outline: 3px solid var(--accent);
@@ -118,6 +120,7 @@
   font-weight: 650;
 }
 
+.typeSection,
 .countSection,
 .linksSection {
   min-width: 0;
@@ -127,6 +130,7 @@
   border-radius: 0.625rem;
 }
 
+.typeSection legend,
 .countSection legend,
 .linksSection legend {
   padding: 0 0.35rem;
@@ -135,6 +139,45 @@
 .linksSection legend span {
   color: var(--muted);
   font-weight: 400;
+}
+
+.typeSection {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.typeOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.typeOptions label {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  min-height: 2.875rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #a4a5aa;
+  border-radius: 0.625rem;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.typeOptions label:hover {
+  border-color: var(--ink);
+}
+
+.typeOptions input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.typeSection[aria-invalid="true"] {
+  border-color: #9b2f24;
 }
 
 .countHelp {
@@ -230,6 +273,11 @@
     grid-template-columns: 1fr;
   }
 
+  .typeOptions {
+    grid-template-columns: 1fr;
+  }
+
+  .typeSection,
   .countSection,
   .linksSection {
     padding: 1rem;
