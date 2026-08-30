@@ -319,16 +319,19 @@ assert_failure_command() {
   failure_arguments=$4
   failure_project=$5
   case "$failure_case:$failure_line" in
-    compose-startup:1|migration:1|cleanup:1)
+    generation:1|compose-startup:1|migration:1|cleanup:1)
+      [ "$failure_command|$failure_arguments" = 'npm|exec -- prisma generate' ] || fail "$failure_case nao gerou o Prisma Client antes da infraestrutura"
+      ;;
+    compose-startup:2|migration:2|cleanup:2)
       [ "$failure_command|$failure_arguments" = "docker|compose -p pge-local -f $failure_project/compose.dev.yaml up -d --wait" ] || fail "$failure_case executou Compose up incorretamente"
       ;;
-    compose-startup:2|migration:3|cleanup:4)
+    compose-startup:3|migration:4|cleanup:5)
       [ "$failure_command|$failure_arguments" = "docker|compose -p pge-local -f $failure_project/compose.dev.yaml down" ] || fail "$failure_case nao encerrou com Compose down seguro"
       ;;
-    migration:2|cleanup:2)
+    migration:3|cleanup:3)
       [ "$failure_command|$failure_arguments" = 'npm|exec -- prisma migrate deploy' ] || fail "$failure_case nao executou a migracao na ordem esperada"
       ;;
-    cleanup:3)
+    cleanup:4)
       [ "$failure_command|$failure_arguments" = 'npm|run dev -- --port 3000' ] || fail 'falha da aplicacao ocorreu no comando incorreto'
       ;;
     *) fail "$failure_case executou comando extra na linha $failure_line" ;;
@@ -389,20 +392,21 @@ while IFS='|' read -r command db_port app_port database_url auth_secret argument
   [ "$auth_secret" = 'local-development-secret-at-least-32-characters' ] || fail "comando $default_line nao recebeu AUTH_SECRET padrao"
   case $default_line in
     1) [ "$command|$arguments" = 'npm|ci' ] || fail 'npm ci nao foi o primeiro comando' ;;
-    2)
-      [ "$command" = docker ] || fail 'Compose up nao foi o segundo comando'
+    2) [ "$command|$arguments" = 'npm|exec -- prisma generate' ] || fail 'Prisma Client nao foi gerado depois da instalacao' ;;
+    3)
+      [ "$command" = docker ] || fail 'Compose up nao ocorreu depois da geracao do Prisma Client'
       [ "$arguments" = "compose -p pge-local -f $default_project/compose.dev.yaml up -d --wait" ] || fail 'Compose up recebeu argumentos incorretos'
       ;;
-    3) [ "$command|$arguments" = 'npm|exec -- prisma migrate deploy' ] || fail 'migracao nao ocorreu antes da aplicacao' ;;
-    4) [ "$command|$arguments" = 'npm|run dev -- --port 3000' ] || fail 'aplicacao nao recebeu APP_PORT padrao' ;;
-    5)
+    4) [ "$command|$arguments" = 'npm|exec -- prisma migrate deploy' ] || fail 'migracao nao ocorreu antes da aplicacao' ;;
+    5) [ "$command|$arguments" = 'npm|run dev -- --port 3000' ] || fail 'aplicacao nao recebeu APP_PORT padrao' ;;
+    6)
       [ "$command" = docker ] || fail 'Compose down nao foi o ultimo comando'
       [ "$arguments" = "compose -p pge-local -f $default_project/compose.dev.yaml down" ] || fail 'limpeza normal recebeu argumentos incorretos'
       ;;
     *) fail 'fluxo padrao executou comandos extras' ;;
   esac
 done < "$default_log"
-[ "$default_line" -eq 5 ] || fail 'fluxo padrao nao executou cinco comandos'
+[ "$default_line" -eq 6 ] || fail 'fluxo padrao nao executou seis comandos'
 
 override_project="$TMP_DIR/override-project"
 prepare_project "$override_project"
@@ -433,24 +437,26 @@ while IFS='|' read -r command db_port app_port database_url auth_secret argument
     *' down -v'*) fail 'limpeza automatica tentou remover o volume' ;;
   esac
   case $override_line in
-    1)
-      [ "$command" = docker ] || fail 'node_modules existente nao omitiu npm ci'
+    1) [ "$command|$arguments" = 'npm|exec -- prisma generate' ] || fail 'node_modules existente nao gerou o Prisma Client' ;;
+    2)
+      [ "$command" = docker ] || fail 'Compose up com override nao ocorreu depois da geracao'
       [ "$arguments" = "compose -p pge-local -f $override_project/compose.dev.yaml up -d --wait" ] || fail 'Compose up com override recebeu argumentos incorretos'
       ;;
-    2) [ "$command|$arguments" = 'npm|exec -- prisma migrate deploy' ] || fail 'migracao com override ocorreu fora de ordem' ;;
-    3) [ "$command|$arguments" = 'npm|run dev -- --port 3200' ] || fail 'falha controlada nao ocorreu na aplicacao' ;;
-    4)
+    3) [ "$command|$arguments" = 'npm|exec -- prisma migrate deploy' ] || fail 'migracao com override ocorreu fora de ordem' ;;
+    4) [ "$command|$arguments" = 'npm|run dev -- --port 3200' ] || fail 'falha controlada nao ocorreu na aplicacao' ;;
+    5)
       [ "$command" = docker ] || fail 'falha nao acionou Compose down'
       [ "$arguments" = "compose -p pge-local -f $override_project/compose.dev.yaml down" ] || fail 'limpeza de falha recebeu argumentos incorretos'
       ;;
     *) fail 'fluxo com override executou comandos extras' ;;
   esac
 done < "$override_log"
-[ "$override_line" -eq 4 ] || fail 'fluxo com override nao executou quatro comandos'
+[ "$override_line" -eq 5 ] || fail 'fluxo com override nao executou cinco comandos'
 
-run_failure_scenario compose-startup 41 '' '' 41 91 2
-run_failure_scenario migration 42 'exec -- prisma migrate deploy' 42 '' 92 3
-run_failure_scenario cleanup 43 'run dev -- --port 3000' 43 '' 93 4
+run_failure_scenario generation 40 'exec -- prisma generate' 40 '' '' 1
+run_failure_scenario compose-startup 41 '' '' 41 91 3
+run_failure_scenario migration 42 'exec -- prisma migrate deploy' 42 '' 92 4
+run_failure_scenario cleanup 43 'run dev -- --port 3000' 43 '' 93 5
 
 run_timer_race_scenario
 run_signal_scenario HUP 129

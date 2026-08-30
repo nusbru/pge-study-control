@@ -44,6 +44,7 @@ cd "$ROOT_DIR"
 if [ ! -d node_modules ]; then
   npm ci
 fi
+npm exec -- prisma generate
 
 cleanup_required=1
 docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --wait
