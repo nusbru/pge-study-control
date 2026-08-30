@@ -5,31 +5,30 @@ Plataforma responsiva para registrar sessoes de estudo e acompanhar o desempenho
 ## Requisitos
 
 - Node.js 22.x e npm para desenvolvimento;
-- Docker Engine com Docker Compose para os bancos de teste e a implantacao;
+- Docker Engine com Docker Compose para o desenvolvimento local, os bancos de teste e a implantacao;
 - Chromium do Playwright (`npm run test:e2e:install`) para testes de ponta a ponta;
 - OpenSSL para gerar os segredos da implantacao.
 
 ## Desenvolvimento local
 
-Instale as dependencias e prepare um arquivo local de ambiente:
+Depois de clonar o repositorio, inicie o PostgreSQL, aplique as migracoes e execute a aplicacao com:
 
 ```sh
-npm ci
-cp .env.test.example .env
+./scripts/run-local.sh
 ```
 
-Inicie o PostgreSQL de teste, aplique as migracoes e execute a aplicacao:
+Na primeira execucao, o script tambem executa `npm ci` quando `node_modules` ainda nao existe. Os valores locais podem ser sobrescritos no mesmo comando:
 
 ```sh
-TEST_DB_PORT=5433 docker compose -f compose.test.yaml up -d --wait
-DATABASE_URL='postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test' npm exec -- prisma migrate deploy
-DATABASE_URL='postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test' AUTH_SECRET='local-development-secret-at-least-32-characters' npm run dev
+LOCAL_DB_PORT=55432 APP_PORT=3100 ./scripts/run-local.sh
 ```
 
-Ao terminar, remova o banco local:
+Os padroes sao `LOCAL_DB_PORT=5433`, `APP_PORT=3000`, `DATABASE_URL=postgresql://pge:pge_local_only@127.0.0.1:5433/pge_local` e `AUTH_SECRET=local-development-secret-at-least-32-characters`. Quando somente `LOCAL_DB_PORT` muda, a URL padrao acompanha a nova porta; `DATABASE_URL` e `AUTH_SECRET` tambem aceitam valores informados no ambiente.
+
+Ao pressionar `Ctrl+C`, o script para a aplicacao e o container PostgreSQL, mas preserva os dados para a proxima execucao. Para remover explicitamente o banco local e seu volume:
 
 ```sh
-TEST_DB_PORT=5433 docker compose -f compose.test.yaml down -v
+docker compose -p pge-local -f compose.dev.yaml down -v
 ```
 
 ## Verificacao
