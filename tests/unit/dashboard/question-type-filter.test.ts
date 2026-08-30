@@ -15,6 +15,9 @@ describe("dashboard question type filter", () => {
     ["unspecified", QuestionType.UNSPECIFIED],
     [undefined, "all"],
     ["unknown", "all"],
+    ["toString", "all"],
+    ["constructor", "all"],
+    ["__proto__", "all"],
     [["doctrine"], "all"],
   ])("parses %j as %s", (input, expected) => {
     expect(parseDashboardQuestionType(input)).toBe(expected);

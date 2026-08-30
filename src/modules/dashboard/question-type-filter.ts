@@ -11,7 +11,7 @@ export type DashboardQuestionType = QuestionType | "all";
 
 export function parseDashboardQuestionType(value: unknown): DashboardQuestionType {
   if (value === "all") return "all";
-  return typeof value === "string" && value in fromParam
+  return typeof value === "string" && Object.hasOwn(fromParam, value)
     ? fromParam[value as keyof typeof fromParam]
     : "all";
 }

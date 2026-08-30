@@ -60,6 +60,9 @@
 .filters a[aria-current="page"] {
   background: var(--ink);
   color: var(--surface);
+  text-decoration: underline;
+  text-decoration-thickness: 0.125em;
+  text-underline-offset: 0.2em;
 }
 
 .filters a:focus-visible,
