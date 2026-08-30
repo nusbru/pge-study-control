@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StudySession } from "@/generated/prisma/client";
 import { QuestionType } from "@/generated/prisma/enums";
@@ -72,5 +72,27 @@ describe("SessionList", () => {
       "href",
       "/sessions/session-details",
     );
+  });
+
+  it("shows localized question types for classified and legacy sessions", () => {
+    render(
+      <SessionList
+        sessions={[
+          session({ questionType: QuestionType.DOCTRINE }),
+          session({
+            id: "legacy-session",
+            subject: "Direito Administrativo",
+            subjectKey: "direito administrativo",
+            questionType: QuestionType.UNSPECIFIED,
+          }),
+        ]}
+        page={1}
+        totalPages={1}
+      />,
+    );
+
+    const [doctrineSession, legacySession] = screen.getAllByRole("listitem");
+    expect(within(doctrineSession).getByText("Doutrina")).toBeVisible();
+    expect(within(legacySession).getByText("Não informado")).toBeVisible();
   });
 });

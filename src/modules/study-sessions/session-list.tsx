@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { deleteSessionAction, type SessionActionState } from "./actions";
 import { formatPercentage, percentage } from "./domain";
+import { questionTypeLabels } from "./question-type";
 import styles from "./session-list.module.css";
 
 type SessionListProps = {
@@ -68,6 +69,9 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
                 <time dateTime={session.studyDate.toISOString().slice(0, 10)}>
                   {formatDate(session.studyDate)}
                 </time>
+                <span className={styles.questionType}>
+                  {questionTypeLabels[session.questionType]}
+                </span>
                 <h2>{session.subject}</h2>
               </div>
 
