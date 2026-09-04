@@ -122,6 +122,20 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       await expect(page.getByRole("heading", { name: "Desempenho", exact: true })).toBeVisible();
       const typeFilters = page.getByRole("navigation", { name: "Filtrar tipo de questão" });
       await expect(typeFilters).toBeVisible();
+      const filterHeadingPositions = await Promise.all([
+        page.getByRole("heading", { name: "Período" }),
+        page.getByRole("heading", { name: "Tipo de questão" }),
+      ].map((heading) => heading.evaluate((element) => {
+        const { top, bottom } = element.getBoundingClientRect();
+        return { top, bottom };
+      })));
+      const [periodHeading, questionTypeHeading] = filterHeadingPositions;
+
+      if (viewport.name === "desktop") {
+        expect(Math.abs(periodHeading.top - questionTypeHeading.top)).toBeLessThan(2);
+      } else {
+        expect(questionTypeHeading.top).toBeGreaterThan(periodHeading.bottom);
+      }
       await expect(page.getByRole("img", {
         name: `Acessibilidade ${viewport.name}: 60,0% de acertos e 40,0% de erros em 10 questões`,
       })).toBeVisible();

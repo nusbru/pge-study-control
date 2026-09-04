@@ -16,8 +16,8 @@
 .filterControls {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-direction: row;
+  gap: 1rem 2rem;
 }
 
 .filterGroup {
@@ -313,6 +313,8 @@
 
   .filterControls {
     width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .filters {
