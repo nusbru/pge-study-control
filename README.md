@@ -44,6 +44,17 @@ npm run build
 
 `npm test` encadeia os scripts nomeados `test:unit`, `test:operations` e `test:security`. Os scripts de integracao e E2E usam projetos Compose exclusivos e portas PostgreSQL aleatorias, removendo somente os recursos da propria execucao. O E2E usa a porta `3000` e deve ser executado sem outro servidor nessa porta.
 
+## CI/CD
+
+O workflow do GitHub Actions executa todos os testes em pull requests destinados a `main`. Em pushes para `main`, depois que todos os testes passam, ele tambem constroi a imagem Docker e a publica no repositorio `pge-study-control` do Docker Hub.
+
+O administrador do repositorio deve cadastrar estes Actions secrets com acesso de escrita ao repositorio da imagem:
+
+- `DOCKERHUB_USERNAME`: nome do usuario ou da organizacao no Docker Hub;
+- `DOCKERHUB_TOKEN`: token de acesso do Docker Hub.
+
+Cada publicacao gera duas tags para a mesma imagem: `v1.0.YYYYMMDDHHMMSS`, com data e hora em UTC, e `latest`. Por exemplo, uma execucao em 31 de agosto de 2026 as 14:25:09 UTC publica `<DOCKERHUB_USERNAME>/pge-study-control:v1.0.20260831142509` e `<DOCKERHUB_USERNAME>/pge-study-control:latest`.
+
 ## Producao com Compose
 
 Gere e valide o ambiente com segredos hexadecimais de 64 caracteres e suba os tres servicos:
