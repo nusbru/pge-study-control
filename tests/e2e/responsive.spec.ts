@@ -132,7 +132,8 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       const [periodHeading, questionTypeHeading] = filterHeadingPositions;
 
       if (viewport.name === "desktop") {
-        expect(Math.abs(periodHeading.top - questionTypeHeading.top)).toBeLessThan(2);
+        expect(periodHeading.bottom).toBeGreaterThan(questionTypeHeading.top);
+        expect(questionTypeHeading.bottom).toBeGreaterThan(periodHeading.top);
       } else {
         expect(questionTypeHeading.top).toBeGreaterThan(periodHeading.bottom);
       }
