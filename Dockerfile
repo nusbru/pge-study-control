@@ -28,12 +28,14 @@ COPY --chown=nextjs:nodejs prisma.config.ts ./prisma.config.ts
 USER nextjs
 CMD ["./node_modules/.bin/prisma", "migrate", "deploy"]
 
-FROM base AS runner
+FROM production-deps AS runner
 ENV NODE_ENV=production \
   HOSTNAME=0.0.0.0 \
   PORT=3000
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node server.js"]
