@@ -1,120 +1,64 @@
-# Operacao da instalacao auto-hospedada
+# Operações — Next.js + ASP.NET Core Identity
 
-Execute os comandos a partir da raiz do repositorio. O host precisa de Docker Engine, Docker Compose, Git e OpenSSL.
+## Instalação
 
-## Preparar o ambiente
+1. Instale Docker Engine/Compose e OpenSSL.
+2. Gere `.env` com `scripts/generate-production-env.sh` e valide com `scripts/validate-production-env.sh`. O arquivo contém somente `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` e `APP_PORT`.
+3. Execute `docker compose build` e `docker compose up -d --wait`.
+4. Exponha `127.0.0.1:<APP_PORT>` por um proxy reverso HTTPS. A API não é exposta diretamente. Cookies de produção exigem HTTPS mesmo que o trecho interno use HTTP.
 
-Gere o arquivo local com modo `600`, valores hexadecimais aleatorios de 64 caracteres e correspondencia garantida entre `POSTGRES_PASSWORD` e `DATABASE_URL`:
+O gerador recusa sobrescrita, usa modo 600 e publicação atômica. Não reaproveite o arquivo antigo com `DATABASE_URL`/`AUTH_SECRET`; use `.env.identity` e `docker compose --env-file .env.identity ...` se quiser preservar o arquivo antigo.
+
+O proxy deve preservar Host e cookies, **sobrescrever `X-Forwarded-Proto` com `https`**, encaminhar `/api/*` junto das páginas para Next.js e permitir os métodos POST/PUT/DELETE. O Next.js repassa esse esquema à API para validação antiforgery. `ReverseProxy:KnownNetworks` permite as redes privadas usadas pelo Docker; a porta API permanece interna. Em outra topologia, restrinja essa lista à rede real do proxy e nunca exponha a API com redes confiáveis excessivamente amplas. Configure limitação de requisições para `/api/auth/register` e `/api/auth/login`.
+
+## Saúde e logs
 
 ```sh
-./scripts/generate-production-env.sh
+docker compose ps --all
+docker compose logs --tail=100 app api migrate
+curl --fail http://127.0.0.1:3000/health
+curl --fail http://127.0.0.1:3000/api/health
 ```
 
-O gerador recusa qualquer `.env` existente, gera os segredos internamente, valida um arquivo temporario no mesmo diretorio e o instala atomicamente sem expor segredos em argumentos de processos filhos. Em falhas, remove o temporario. O validador aceita comentarios que mencionem `CHANGE_ME`, mas interrompe a sequencia se um valor ainda contiver o marcador, se as seis atribuicoes obrigatorias estiverem ausentes, vazias, duplicadas ou malformadas, se os segredos nao tiverem 64 caracteres hexadecimais, se os nomes do banco e usuario forem inseguros, se `DATABASE_URL` divergir ou se `APP_PORT` nao estiver entre 1 e 65535. Os scripts tratam o arquivo como dados, sem executa-lo como codigo shell nem imprimir valores secretos. Revise `APP_PORT`. O arquivo `.env` contem segredos e nao deve ser commitado, copiado para a imagem, carregado desnecessariamente no shell ou compartilhado.
+`/health` verifica o frontend; `/api/health` verifica a conexão PostgreSQL. O healthcheck Compose do frontend consulta ambas. Falhas de API são registradas no console com identificador de requisição e retornam mensagens genéricas para o navegador.
 
-## Primeira inicializacao
+## Atualização
 
-Valide a interpolacao, construa os alvos `migrator` e `runner` e inicie a pilha:
+Faça backup antes de aplicar alterações de esquema. Depois:
 
 ```sh
-docker compose config --quiet
 docker compose build
+docker compose stop app api
+docker compose run --rm migrate
 docker compose up -d --wait
 ```
 
-O PostgreSQL precisa ficar saudavel antes da migracao. O servico `migrate` deve terminar com codigo 0 antes de `app` iniciar.
+O serviço `migrate` executa `dotnet PgeStudy.Host.dll --migrate`. O processo API normal não aplica migrações. Não faça rollback de imagens sem verificar a compatibilidade com o esquema já aplicado.
+
+Se mudar o hostname interno da API, ajuste tanto o build argument `API_INTERNAL_URL` do frontend quanto sua variável de runtime. Os rewrites Next.js ficam fixados no build.
+
+## Chaves e sessões Identity
+
+`identity_keys` guarda o key ring de Data Protection; `identity_postgres_data` guarda o banco. Chaves são mantidas em volume com permissões do usuário não-root `app`. Proteja o volume e seus backups: as chaves permitem ler tickets Identity. Em múltiplas réplicas, compartilhe o mesmo key ring e ApplicationName (`PgeStudy`).
+
+A perda das chaves invalida cookies existentes, mas não remove contas. Não apague chaves antigas durante a rotação. O ticket tem duração fixa de oito horas. Alteração do security stamp revoga a autenticação do usuário; logout remove o cookie do navegador.
+
+## Backup e restauração
+
+Banco (backup em formato custom):
 
 ```sh
-docker compose ps --all
-docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > pge-identity.dump
 ```
 
-A resposta esperada e `{"status":"ok"}`. A URL externa e `http://127.0.0.1:<APP_PORT>/api/health`, com `<APP_PORT>` igual ao valor configurado em `.env`; o comando acima usa a porta interna do container e funciona para qualquer `APP_PORT`. Um `503` com `{"status":"unavailable"}` indica que a aplicacao nao conseguiu consultar o PostgreSQL; detalhes permanecem apenas no log do servidor.
+Armazene também um backup restrito do volume `identity_keys`, usando o mecanismo de backup de volumes do host. Criptografe os backups fora do host e teste sua restauração.
 
-## Logs
+Para restaurar em uma instalação preparada com o mesmo esquema/credenciais, pare `app` e `api`, restaure o dump e o key ring, e reinicie os serviços:
 
 ```sh
-docker compose logs --tail=100 app
-docker compose logs migrate
-docker compose logs --tail=100 db
+docker compose stop app api
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < pge-identity.dump
+docker compose up -d --wait
 ```
 
-Para acompanhar a aplicacao continuamente:
-
-```sh
-docker compose logs --follow app
-```
-
-## Atualizar
-
-Antes de atualizar, faca backup. Depois obtenha apenas avancos da branch implantada, reconstrua as imagens e recrie os servicos. A migracao e executada antes da nova aplicacao.
-
-```sh
-git pull --ff-only
-docker compose build --pull
-docker compose up -d --wait --remove-orphans
-docker compose ps --all
-docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
-```
-
-## Backup e restauracao
-
-Crie o backup em um arquivo no host:
-
-```sh
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
-```
-
-Verifique se `backup.sql` existe e nao esta vazio antes de depender dele. Guarde-o criptografado, teste restauracoes periodicamente e aplique uma politica externa de retencao.
-
-O fluxo abaixo para `app`, recria explicitamente o banco vazio pelo banco de manutencao `postgres`, restaura com parada no primeiro erro e executa novamente o migrador. `dropdb --force` encerra conexoes ativas ao banco alvo. Se qualquer etapa, inclusive o health check final, falhar, o trap mantem `app` parado.
-
-```sh
-set -eu
-restore_cleanup() {
-  restore_status=$?
-  trap - 0 HUP INT TERM
-  if [ "$restore_status" -ne 0 ]; then
-    docker compose stop app >/dev/null 2>&1 || :
-  fi
-  exit "$restore_status"
-}
-trap restore_cleanup 0 HUP INT TERM
-
-docker compose stop app
-test -s backup.sql
-docker compose exec -T db sh -eu -c '
-  dropdb --force --if-exists --maintenance-db=postgres -U "$POSTGRES_USER" "$POSTGRES_DB"
-  createdb --maintenance-db=postgres -U "$POSTGRES_USER" "$POSTGRES_DB"
-'
-docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup.sql
-docker compose rm --force --stop migrate
-docker compose up --no-deps --abort-on-container-exit --exit-code-from migrate migrate
-docker compose up -d --wait app
-docker compose ps --all
-docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
-
-trap - 0 HUP INT TERM
-```
-
-## Encerrar
-
-Pare os containers sem apagar os dados:
-
-```sh
-docker compose down
-```
-
-`docker compose down -v` apaga definitivamente o volume do PostgreSQL e so deve ser usado quando a perda de todos os dados for intencional ou depois de uma restauracao validada em outro ambiente.
-
-## Proxy, HTTPS e limites
-
-Nao exponha o HTTP da aplicacao diretamente a internet. Configure um proxy reverso externo para:
-
-- terminar TLS com certificado valido e redirecionar HTTP para HTTPS;
-- encaminhar o host original; `AUTH_TRUST_HOST=true` ja esta definido no container;
-- restringir o acesso direto a `APP_PORT` por firewall;
-- aplicar rate limiting mais rigoroso a `/login`, `/register` e `/api/auth/*`;
-- definir limites de tamanho e tempo de requisicao apropriados.
-
-O endpoint `/api/health` consulta o banco e serve para health checks. Se o proxy o publicar, limite o volume de requisicoes; a resposta nao contem detalhes internos.
+Os dados antigos da versão Prisma não são convertidos. Os nomes dos volumes novos impedem que o primeiro start substitua dados antigos. `docker compose down` preserva volumes; `down -v` os remove e deve ser usado apenas quando a exclusão for intencional.

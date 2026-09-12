@@ -2,18 +2,72 @@ services:
   db-dev:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: pge_local
+      POSTGRES_DB: pge_identity_local
       POSTGRES_USER: pge
       POSTGRES_PASSWORD: pge_local_only
     ports:
       - "127.0.0.1:${LOCAL_DB_PORT:-5433}:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - identity_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pge -d pge_local"]
+      test: ["CMD-SHELL", "pg_isready -U pge -d pge_identity_local"]
       interval: 2s
       timeout: 3s
       retries: 20
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: Host=db-dev;Database=pge_identity_local;Username=pge;Password=pge_local_only;GSS Encryption Mode=Disable
+    depends_on:
+      db-dev:
+        condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: Host=db-dev;Database=pge_identity_local;Username=pge;Password=pge_local_only;GSS Encryption Mode=Disable
+    ports:
+      - "127.0.0.1:${API_PORT:-5080}:8080"
+    volumes:
+      - identity_dev_keys:/keys
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  app:
+    build:
+      context: .
+      target: development
+      args:
+        LOCAL_UID: ${LOCAL_UID:-1000}
+        LOCAL_GID: ${LOCAL_GID:-1000}
+    init: true
+    environment:
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      - .:/app:z
+      - frontend_dev_dependencies:/app/node_modules
+      - frontend_dev_build:/app/.next
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "Promise.all(['/health','/api/health'].map(p=>fetch('http://127.0.0.1:3000'+p))).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      start_period: 45s
+      retries: 20
 
 volumes:
-  postgres_dev_data:
+  identity_dev_data:
+  identity_dev_keys:
+  frontend_dev_dependencies:
+  frontend_dev_build:

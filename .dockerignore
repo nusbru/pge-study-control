@@ -1,7 +1,13 @@
 .git
+.worktrees
+.impeccable
 .next
 node_modules
 src/generated/prisma
+**/bin
+**/obj
+**/TestResults
+.data-protection
 
 .env*
 !.env.example
@@ -13,7 +19,8 @@ test-results
 *.tsbuildinfo
 
 tests
-scripts
+scripts/*
+!scripts/start-dev-frontend.sh
 docs
 README.md
 PRODUCT.md

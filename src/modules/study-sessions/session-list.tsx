@@ -1,6 +1,6 @@
 "use client";
 
-import type { StudySession } from "@/generated/prisma/client";
+import type { StudySession } from "@/lib/api/contracts";
 import Link from "next/link";
 import { useActionState } from "react";
 import { deleteSessionAction, type SessionActionState } from "./actions";

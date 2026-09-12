@@ -51,10 +51,7 @@ trap 'exit 143' TERM
 temporary_file=$(mktemp "$output_directory/.$output_name.tmp.XXXXXX")
 chmod 600 "$temporary_file"
 db_password=$(openssl rand -hex 32)
-auth_secret=$(openssl rand -hex 32)
 database_password_replacements=0
-database_url_replacements=0
-auth_secret_replacements=0
 
 {
   while IFS= read -r line || [ -n "$line" ]; do
@@ -63,27 +60,12 @@ auth_secret_replacements=0
         printf 'POSTGRES_PASSWORD=%s\n' "$db_password"
         database_password_replacements=$((database_password_replacements + 1))
         ;;
-      DATABASE_URL=*CHANGE_ME_RANDOM_DATABASE_PASSWORD*)
-        prefix=${line%%CHANGE_ME_RANDOM_DATABASE_PASSWORD*}
-        suffix=${line#*CHANGE_ME_RANDOM_DATABASE_PASSWORD}
-        case $suffix in
-          *CHANGE_ME_RANDOM_DATABASE_PASSWORD*) fail 'Template contem marcadores duplicados na DATABASE_URL' ;;
-        esac
-        printf '%s%s%s\n' "$prefix" "$db_password" "$suffix"
-        database_url_replacements=$((database_url_replacements + 1))
-        ;;
-      AUTH_SECRET=CHANGE_ME_GENERATE_WITH_OPENSSL_RAND_HEX_32)
-        printf 'AUTH_SECRET=%s\n' "$auth_secret"
-        auth_secret_replacements=$((auth_secret_replacements + 1))
-        ;;
       *) printf '%s\n' "$line" ;;
     esac
   done < "$TEMPLATE_FILE"
 } > "$temporary_file"
 
-if [ "$database_password_replacements" -ne 1 ] ||
-   [ "$database_url_replacements" -ne 1 ] ||
-   [ "$auth_secret_replacements" -ne 1 ]; then
+if [ "$database_password_replacements" -ne 1 ]; then
   fail 'Template de ambiente nao contem os marcadores esperados'
 fi
 

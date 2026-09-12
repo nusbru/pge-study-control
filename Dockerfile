@@ -1,41 +1,34 @@
 # syntax=docker/dockerfile:1
+FROM node:22-alpine AS development
+WORKDIR /app
+ARG LOCAL_UID=1000
+ARG LOCAL_GID=1000
+ENV NODE_ENV=development NEXT_TELEMETRY_DISABLED=1 npm_config_cache=/tmp/npm-cache
+RUN mkdir -p /app/node_modules /app/.next && chown -R ${LOCAL_UID}:${LOCAL_GID} /app
+COPY --chown=${LOCAL_UID}:${LOCAL_GID} package.json package-lock.json ./
+COPY --chmod=755 scripts/start-dev-frontend.sh /usr/local/bin/start-dev-frontend
+USER ${LOCAL_UID}:${LOCAL_GID}
+RUN npm ci && sha256sum package-lock.json > node_modules/.package-lock.sha256
+EXPOSE 3000
+CMD ["/usr/local/bin/start-dev-frontend"]
 
-FROM node:22-alpine AS base
+FROM node:22-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 --ingroup nodejs nextjs
-
-FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci
-
-FROM base AS production-deps
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-FROM deps AS builder
 COPY . .
-RUN DATABASE_URL='postgresql://build:build@127.0.0.1:5432/build' npm exec -- prisma generate
-RUN DATABASE_URL='postgresql://build:build@127.0.0.1:5432/build' \
-  AUTH_SECRET='build-placeholder-not-used-at-runtime' \
-  npm run build
+# Next.js rewrites are compiled at build time. Compose uses this stable service name.
+ARG API_INTERNAL_URL=http://api:8080
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
+RUN npm run build
 
-FROM production-deps AS migrator
-ENV NODE_ENV=production
-COPY --chown=nextjs:nodejs prisma ./prisma
-COPY --chown=nextjs:nodejs prisma.config.ts ./prisma.config.ts
-USER nextjs
-CMD ["./node_modules/.bin/prisma", "migrate", "deploy"]
-
-FROM production-deps AS runner
-ENV NODE_ENV=production \
-  HOSTNAME=0.0.0.0 \
-  PORT=3000
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000 API_INTERNAL_URL=http://api:8080
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node server.js"]
+CMD ["node", "server.js"]

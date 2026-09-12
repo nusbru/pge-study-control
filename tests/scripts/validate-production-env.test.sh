@@ -48,7 +48,7 @@ cp "$TMP_DIR/ready.env" "$TMP_DIR/empty-value.env"
 replace_assignment "$TMP_DIR/empty-value.env" APP_PORT ''
 expect_rejected empty-value 'valor vazio'
 
-sed '/^AUTH_SECRET=/d' "$TMP_DIR/ready.env" > "$TMP_DIR/missing.env"
+sed '/^POSTGRES_PASSWORD=/d' "$TMP_DIR/ready.env" > "$TMP_DIR/missing.env"
 expect_rejected missing 'variavel ausente'
 
 cp "$TMP_DIR/ready.env" "$TMP_DIR/duplicate.env"
@@ -78,21 +78,9 @@ cp "$TMP_DIR/ready.env" "$TMP_DIR/malformed-password.env"
 replace_assignment "$TMP_DIR/malformed-password.env" POSTGRES_PASSWORD 'g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 expect_rejected malformed-password 'senha nao hexadecimal do banco'
 
-cp "$TMP_DIR/ready.env" "$TMP_DIR/weak-auth.env"
-replace_assignment "$TMP_DIR/weak-auth.env" AUTH_SECRET 'abc123'
-expect_rejected weak-auth 'segredo de autenticacao curto'
-
-cp "$TMP_DIR/ready.env" "$TMP_DIR/malformed-auth.env"
-replace_assignment "$TMP_DIR/malformed-auth.env" AUTH_SECRET 'g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-expect_rejected malformed-auth 'segredo de autenticacao nao hexadecimal'
-
-cp "$TMP_DIR/ready.env" "$TMP_DIR/url-user.env"
-replace_assignment "$TMP_DIR/url-user.env" DATABASE_URL "postgresql://other:$DB_PASSWORD@db:5432/pge_study_control"
-expect_rejected url-user 'usuario divergente na URL'
-
-cp "$TMP_DIR/ready.env" "$TMP_DIR/url-password.env"
-replace_assignment "$TMP_DIR/url-password.env" DATABASE_URL "postgresql://pge:$AUTH_SECRET_VALUE@db:5432/pge_study_control"
-expect_rejected url-password 'senha divergente na URL'
+cp "$TMP_DIR/ready.env" "$TMP_DIR/legacy-auth.env"
+printf '%s\n' 'AUTH_SECRET=legacy' >> "$TMP_DIR/legacy-auth.env"
+expect_rejected legacy-auth 'configuracao Auth.js obsoleta'
 
 cp "$TMP_DIR/ready.env" "$TMP_DIR/bad-db.env"
 replace_assignment "$TMP_DIR/bad-db.env" POSTGRES_DB 'bad/name'

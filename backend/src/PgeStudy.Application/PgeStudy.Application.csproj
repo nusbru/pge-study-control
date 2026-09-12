@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../PgeStudy.Domain/PgeStudy.Domain.csproj" />
+  </ItemGroup>
+</Project>

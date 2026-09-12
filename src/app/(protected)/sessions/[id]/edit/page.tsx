@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUserId } from "@/lib/auth-user";
-import { updateSessionAction } from "@/modules/study-sessions/actions";
 import { getSession } from "@/modules/study-sessions/repository";
-import { SessionForm } from "@/modules/study-sessions/session-form";
+import { SessionEditor } from "@/modules/study-sessions/session-editor";
 import styles from "@/modules/study-sessions/session-form.module.css";
 
 type EditSessionPageProps = {
@@ -10,12 +9,11 @@ type EditSessionPageProps = {
 };
 
 export default async function EditSessionPage({ params }: EditSessionPageProps) {
-  const userId = await requireUserId();
+  await requireUserId();
   const { id } = await params;
-  const session = await getSession(userId, id);
+  const session = await getSession(id);
   if (!session) notFound();
 
-  const action = updateSessionAction.bind(null, session.id);
   const studyDate = session.studyDate.toISOString().slice(0, 10);
 
   return (
@@ -25,8 +23,8 @@ export default async function EditSessionPage({ params }: EditSessionPageProps) 
         <p>Corrija o registro sem alterar o restante do histórico.</p>
       </header>
       <section className={styles.panel} aria-label={`Editar sessão de ${session.subject}`}>
-        <SessionForm
-          action={action}
+        <SessionEditor
+          sessionId={session.id}
           defaultStudyDate={studyDate}
           defaultValues={{
             studyDate,

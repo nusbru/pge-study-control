@@ -1,7 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StudySession } from "@/generated/prisma/client";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType, type StudySession } from "@/lib/api/contracts";
 import SessionDetailsPage from "@/app/(protected)/sessions/[id]/page";
 
 const mocks = vi.hoisted(() => ({
@@ -24,7 +23,6 @@ vi.mock("next/navigation", () => ({
 
 const studySession: StudySession = {
   id: "session-1",
-  userId: "user-1",
   studyDate: new Date("2026-08-23T00:00:00.000Z"),
   subject: "Direito Civil",
   subjectKey: "direito civil",
@@ -60,7 +58,7 @@ describe("SessionDetailsPage", () => {
     render(page);
 
     expect(mocks.requireUserId).toHaveBeenCalledOnce();
-    expect(mocks.getSession).toHaveBeenCalledWith("user-1", "session-1");
+    expect(mocks.getSession).toHaveBeenCalledWith("session-1");
     expect(screen.getByRole("heading", { name: "Direito Civil" })).toBeVisible();
     expect(screen.getByText("23/08/2026")).toBeVisible();
     expect(screen.getByText("Jurisprudência")).toBeVisible();
@@ -134,7 +132,7 @@ describe("SessionDetailsPage", () => {
       SessionDetailsPage({ params: Promise.resolve({ id: "unknown" }) }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
 
-    expect(mocks.getSession).toHaveBeenCalledWith("user-1", "unknown");
+    expect(mocks.getSession).toHaveBeenCalledWith("unknown");
     expect(mocks.notFound).toHaveBeenCalledOnce();
   });
 });

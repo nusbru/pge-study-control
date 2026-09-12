@@ -13,9 +13,9 @@ type SessionDetailsPageProps = {
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 
 export default async function SessionDetailsPage({ params }: SessionDetailsPageProps) {
-  const userId = await requireUserId();
+  await requireUserId();
   const { id } = await params;
-  const session = await getSession(userId, id);
+  const session = await getSession(id);
   if (!session) notFound();
 
   const correctPercentage = formatPercentage(

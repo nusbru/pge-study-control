@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 import {
   parseDashboardQuestionType,
   serializeDashboardQuestionType,
