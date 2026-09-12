@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["--migrate"]
+      target: migrator
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Database: Host=db-dev;Database=pge_identity_local;Username=pge;Password=pge_local_only;GSS Encryption Mode=Disable

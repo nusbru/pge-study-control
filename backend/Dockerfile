@@ -11,12 +11,17 @@ RUN dotnet restore backend/src/PgeStudy.Host/PgeStudy.Host.csproj
 COPY backend/src backend/src
 RUN dotnet publish backend/src/PgeStudy.Host/PgeStudy.Host.csproj -c Release --no-restore -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 DataProtection__KeysPath=/keys
 USER root
 RUN mkdir /keys && chown app:app /keys
 COPY --from=builder --chown=app:app /app ./
 USER app
+
+FROM runtime AS migrator
+ENTRYPOINT ["dotnet", "PgeStudy.Host.dll", "--migrate"]
+
+FROM runtime AS runner
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "PgeStudy.Host.dll"]

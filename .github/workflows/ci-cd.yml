@@ -81,8 +81,13 @@ jobs:
         include:
           - image: pge-study-control
             dockerfile: Dockerfile
+            target: runner
           - image: pge-study-control-api
             dockerfile: backend/Dockerfile
+            target: runner
+          - image: pge-study-control-migrations
+            dockerfile: backend/Dockerfile
+            target: migrator
 
     steps:
       - name: Checkout repository
@@ -111,7 +116,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          target: runner
+          target: ${{ matrix.target }}
           load: true
           push: false
           tags: |

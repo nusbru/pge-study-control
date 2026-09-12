@@ -107,4 +107,12 @@ docker compose --env-file .env.identity up -d --build --wait
 
 Produção exige HTTPS no proxy reverso que expõe o frontend. A porta do app é vinculada ao loopback; API e banco permanecem internos. Consulte [operações](docs/operations.md) para chaves Identity, backup e atualização.
 
-CI executa verificações frontend/backend, compatibilidade OpenAPI e E2E. Pushes aprovados em `main` publicam `pge-study-control` e `pge-study-control-api` no Docker Hub usando `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`.
+CI executa verificações frontend/backend, compatibilidade OpenAPI e E2E. Pushes aprovados em `main` publicam três imagens no Docker Hub usando `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`:
+
+| Imagem | Finalidade | Target Docker |
+| --- | --- | --- |
+| `pge-study-control` | Frontend Next.js | `runner` |
+| `pge-study-control-api` | API ASP.NET Core | `runner` |
+| `pge-study-control-migrations` | Aplica migrations EF Core e encerra, sem iniciar o servidor HTTP | `migrator` |
+
+Todas recebem `latest` e a mesma tag `v1.0.YYYYMMDDHHMMSS` (UTC). Use a mesma versão da API e do migrador em cada implantação. A imagem de migrations precisa de `ConnectionStrings__Database` e acesso de rede ao PostgreSQL; seu entrypoint já executa `dotnet PgeStudy.Host.dll --migrate`. Veja [execução manual no Dokploy](docs/operations.md#migrations-manuais-no-dokploy).

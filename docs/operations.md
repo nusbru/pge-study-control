@@ -33,9 +33,41 @@ docker compose run --rm migrate
 docker compose up -d --wait
 ```
 
-O serviço `migrate` executa `dotnet PgeStudy.Host.dll --migrate`. O processo API normal não aplica migrações. Não faça rollback de imagens sem verificar a compatibilidade com o esquema já aplicado.
+O serviço `migrate` usa o target Docker `migrator`, cujo entrypoint executa `dotnet PgeStudy.Host.dll --migrate` e encerra sem iniciar o servidor HTTP. O processo API normal não aplica migrações. Não faça rollback de imagens sem verificar a compatibilidade com o esquema já aplicado.
 
 Se mudar o hostname interno da API, ajuste tanto o build argument `API_INTERNAL_URL` do frontend quanto sua variável de runtime. Os rewrites Next.js ficam fixados no build.
+
+## Migrations manuais no Dokploy
+
+O CI publica `docker.io/<DOCKERHUB_USERNAME>/pge-study-control-migrations:<versão>` após os testes aprovados em `main`. Escolha a mesma tag versionada da API que será implantada.
+
+Execute essa imagem como uma tarefa de execução única, conectada à rede do PostgreSQL, com:
+
+- `ConnectionStrings__Database`: a string de conexão do banco de destino, configurada no ambiente do serviço;
+- entrypoint padrão da imagem, sem precisar informar comando adicional;
+- política de reinício `"no"` e sem domínio, porta publicada ou healthcheck HTTP.
+
+Em um serviço Docker Compose do Dokploy, a configuração pode ser:
+
+```yaml
+services:
+  migrate:
+    image: docker.io/${DOCKERHUB_USERNAME}/pge-study-control-migrations:${IMAGE_VERSION}
+    environment:
+      ConnectionStrings__Database: ${ConnectionStrings__Database:?ConnectionStrings__Database is required}
+    restart: "no"
+```
+
+Configure as três variáveis no ambiente do serviço. Conecte-o à rede do banco se este estiver em outro projeto; o hostname da string de conexão deve ser acessível pelo container. Aguarde o banco ficar disponível antes de executar.
+
+O container aplica as migrations pendentes e encerra com código `0` em caso de sucesso. Uma nova execução não reaplica migrations já registradas. Se ocorrer erro, o processo encerra com código diferente de zero; consulte os logs e corrija o problema antes de iniciar a nova API. O estado encerrado é esperado para esse serviço.
+
+Para construir e executar o mesmo target localmente com o Compose do repositório:
+
+```sh
+docker compose build migrate
+docker compose run --rm migrate
+```
 
 ## Chaves e sessões Identity
 
