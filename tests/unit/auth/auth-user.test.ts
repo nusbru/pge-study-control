@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn(() => { throw redirectError; }),
 }));
 
-vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/lib/api/server", () => ({ serverApi: mocks.auth }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 describe("requireUserId", () => {
@@ -16,15 +16,15 @@ describe("requireUserId", () => {
   });
 
   it("returns the authenticated server session user ID", async () => {
-    mocks.auth.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.auth.mockResolvedValue({ id: "user-1" });
 
     await expect(requireUserId()).resolves.toBe("user-1");
   });
 
   it.each([
     null,
-    { user: {} },
-    { user: { id: 42 } },
+    {},
+    { id: 42 },
   ])("rejects a missing or malformed authenticated identity", async (session) => {
     mocks.auth.mockResolvedValue(session);
 

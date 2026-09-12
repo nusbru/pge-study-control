@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(protected)/dashboard/page";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 import type { DashboardData } from "@/modules/dashboard/queries";
 
 const dashboard: DashboardData = {
@@ -98,7 +98,6 @@ describe("DashboardPage", () => {
     render(page);
 
     expect(mocks.getDashboard).toHaveBeenCalledWith(
-      "user-1",
       "30d",
       "2026-08-24",
       QuestionType.DOCTRINE,
@@ -125,7 +124,7 @@ describe("DashboardPage", () => {
 
     render(page);
 
-    expect(mocks.getDashboard).toHaveBeenCalledWith("user-1", "30d", "2026-08-24", "all");
+    expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all");
     expect(screen.getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -176,7 +175,7 @@ describe("DashboardPage", () => {
     await DashboardPage({ searchParams: Promise.resolve({ period, today }) });
 
     expect(mocks.getDashboard).toHaveBeenCalledOnce();
-    expect(mocks.getDashboard).toHaveBeenCalledWith("user-1", period, today, "all");
+    expect(mocks.getDashboard).toHaveBeenCalledWith(period, today, "all");
   });
 
   it("propagates a dashboard query failure for a valid window", async () => {

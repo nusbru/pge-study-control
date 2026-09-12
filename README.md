@@ -1,72 +1,110 @@
 # PGE Study
 
-Plataforma responsiva para registrar sessoes de estudo e acompanhar o desempenho ponderado por assunto.
+Plataforma responsiva para registrar sessões de estudo e acompanhar o desempenho ponderado por assunto.
+
+## Arquitetura
+
+- **Frontend:** Next.js 16, React 19, TypeScript e CSS Modules. Mantém as páginas, textos e decisões visuais de `DESIGN.md`.
+- **API:** ASP.NET Core 10, ASP.NET Core Identity, EF Core e PostgreSQL 17.
+- **Autenticação:** cookie HttpOnly de mesma origem e antiforgery em todas as mutações. A API verifica a propriedade dos registros.
+- **Dados:** banco novo, gerenciado exclusivamente pelas migrações EF. Volumes novos não substituem os volumes da implementação Prisma.
+
+O navegador usa `/api/*`, encaminhado pelo Next.js para a API. Server Components consultam a API usando o cookie Identity, sem cache de dados privados. O frontend não recebe credenciais do PostgreSQL. `src/lib/api/generated.d.ts` é gerado do OpenAPI; `src/lib/api/contracts.ts` adapta datas para os componentes existentes.
+
+O backend está em `backend/src`, dividido em Domain, Application, Infrastructure e Host. As regras incluem normalização de assuntos, contagens consistentes, períodos inclusivos e percentuais ponderados. Veja [a arquitetura](docs/architecture.md).
 
 ## Requisitos
 
-- Node.js 22.x e npm para desenvolvimento;
-- Docker Engine com Docker Compose para o desenvolvimento local, os bancos de teste e a implantacao;
-- Chromium do Playwright (`npm run test:e2e:install`) para testes de ponta a ponta;
-- OpenSSL para gerar os segredos da implantacao.
+- Docker Engine e Docker Compose para iniciar todo o ambiente local;
+- Node.js 22.x e npm para executar as ferramentas/testes no host (o frontend local usa Node dentro do container);
+- .NET SDK 10 para desenvolvimento da API, testes e geração dos contratos;
+- Chromium do Playwright: `npm run test:e2e:install`;
+- OpenSSL para gerar a configuração de produção.
 
 ## Desenvolvimento local
-
-Depois de clonar o repositorio, inicie o PostgreSQL, aplique as migracoes e execute a aplicacao com:
 
 ```sh
 ./scripts/run-local.sh
 ```
 
-Na primeira execucao, o script tambem executa `npm ci` quando `node_modules` ainda nao existe. Os valores locais podem ser sobrescritos no mesmo comando:
+O script constrói e inicia **frontend, API e PostgreSQL em containers**, aplicando migrações em um serviço dedicado. Aguarda a saúde do frontend e da API e acompanha os logs. `Ctrl+C` encerra os containers, preservando dados e chaves Identity.
+
+O Next.js roda com hot reload: edite os arquivos normalmente no host. O código é montado em `/app`; `node_modules` e `.next` usam volumes Docker separados dos diretórios do host. As dependências são instaladas na imagem e atualizadas no volume quando o `package-lock.json` muda, na próxima inicialização. Reinicie o script depois de alterar dependências. O script utiliza seu UID/GID para que arquivos gerados no código montado pertençam ao seu usuário.
 
 ```sh
-LOCAL_DB_PORT=55432 APP_PORT=3100 ./scripts/run-local.sh
+LOCAL_DB_PORT=55432 API_PORT=5081 APP_PORT=3100 ./scripts/run-local.sh
 ```
 
-Os padroes sao `LOCAL_DB_PORT=5433`, `APP_PORT=3000`, `DATABASE_URL=postgresql://pge:pge_local_only@127.0.0.1:5433/pge_local` e `AUTH_SECRET=local-development-secret-at-least-32-characters`. Quando somente `LOCAL_DB_PORT` muda, a URL padrao acompanha a nova porta; `DATABASE_URL` e `AUTH_SECRET` tambem aceitam valores informados no ambiente.
-
-Ao pressionar `Ctrl+C`, o script para a aplicacao e o container PostgreSQL, mas preserva os dados para a proxima execucao. Para remover explicitamente o banco local e seu volume:
+Padrões: frontend `http://localhost:3000`, API `http://127.0.0.1:5080`, PostgreSQL local na porta `5433`. O frontend acessa a API pelo endereço interno `http://api:8080`, independentemente das portas do host. O banco se chama `pge_identity_local`. Os logs também ficam disponíveis com:
 
 ```sh
-docker compose -p pge-local -f compose.dev.yaml down -v
+docker compose -p pge-local -f compose.dev.yaml logs -f app api
 ```
 
-## Verificacao
+O projeto Compose padrão é `pge-local`; `COMPOSE_PROJECT_NAME` permite isolar outra execução. Para iniciar desacoplado do terminal, use `docker compose -p pge-local -f compose.dev.yaml up -d --build --wait` e encerre com `docker compose -p pge-local -f compose.dev.yaml down`.
+
+Para executar a API diretamente com hot reload no host, encerre o ambiente containerizado, inicie somente o banco e o migrador e execute:
 
 ```sh
+docker compose -p pge-local -f compose.dev.yaml up -d --build db-dev migrate
+ASPNETCORE_ENVIRONMENT=Development \
+ConnectionStrings__Database='Host=127.0.0.1;Port=5433;Database=pge_identity_local;Username=pge;Password=pge_local_only' \
+dotnet watch --project backend/src/PgeStudy.Host run -- --urls http://127.0.0.1:5080
+```
+
+Em outro terminal: `npm run dev`. OpenAPI: `http://127.0.0.1:5080/api/openapi/v1.json` em Development/Testing.
+
+## Verificação
+
+```sh
+npm ci
 npm test
-npm run test:integration
-npm run test:e2e
 npm run lint
 npm run typecheck
-npm run build
+npm run test:backend
+npm run api:types:check
+npm run test:e2e
+npm run test:production
+npm run test:local-containers
 ```
 
-`npm test` encadeia os scripts nomeados `test:unit`, `test:operations` e `test:security`. Os scripts de integracao e E2E usam projetos Compose exclusivos e portas PostgreSQL aleatorias, removendo somente os recursos da propria execucao. O E2E usa a porta `3000` e deve ser executado sem outro servidor nessa porta.
+`npm test` executa testes de frontend e scripts operacionais. `test:backend` executa xUnit e testes de API com PostgreSQL real via Testcontainers. `test:integration` executa apenas os testes de integração .NET.
 
-## CI/CD
+O E2E cria um projeto Compose exclusivo com API em porta aleatória, constrói o frontend de produção, executa os testes desktop/mobile e remove somente os recursos dessa execução. Reserve a porta 3000 ou escolha outra com `E2E_PORT=3101 npm run test:e2e`. Não execute builds/desenvolvimento Next simultaneamente na mesma pasta `.next`.
 
-O workflow do GitHub Actions executa todos os testes em pull requests destinados a `main`. Em pushes para `main`, depois que todos os testes passam, ele tambem constroi a imagem Docker e a publica no repositorio `pge-study-control` do Docker Hub.
+`test:production` usa os containers de produção, testa cookies Secure através do proxy e recria a API para verificar a persistência das chaves. Usa a porta 3141 (`PRODUCTION_TEST_PORT` para alterar) e remove seu próprio banco/volumes ao concluir. O teste simula o cabeçalho de esquema do proxy HTTPS no loopback; não testa certificados TLS externos.
 
-O administrador do repositorio deve cadastrar estes Actions secrets com acesso de escrita ao repositorio da imagem:
+`test:local-containers` verifica a inicialização local, os volumes isolados, o proxy da API, hot reload no navegador e encerramento por `Ctrl+C`. Usa uma cópia temporária do projeto e portas aleatórias, sem editar o código original durante o teste.
 
-- `DOCKERHUB_USERNAME`: nome do usuario ou da organizacao no Docker Hub;
-- `DOCKERHUB_TOKEN`: token de acesso do Docker Hub.
+Após mudar contratos C#:
 
-Cada publicacao gera duas tags para a mesma imagem: `v1.0.YYYYMMDDHHMMSS`, com data e hora em UTC, e `latest`. Por exemplo, uma execucao em 31 de agosto de 2026 as 14:25:09 UTC publica `<DOCKERHUB_USERNAME>/pge-study-control:v1.0.20260831142509` e `<DOCKERHUB_USERNAME>/pge-study-control:latest`.
+```sh
+npm run api:types
+```
 
-## Producao com Compose
+O gerador inicia uma API temporária para ler seu OpenAPI; não precisa de banco. Para novas migrações:
 
-Gere e valide o ambiente com segredos hexadecimais de 64 caracteres e suba os tres servicos:
+```sh
+dotnet tool restore
+dotnet ef migrations add NomeDaMigracao --project backend/src/PgeStudy.Infrastructure --startup-project backend/src/PgeStudy.Host --output-dir Persistence/Migrations
+```
+
+## Produção
 
 ```sh
 ./scripts/generate-production-env.sh
+./scripts/validate-production-env.sh
 docker compose build
 docker compose up -d --wait
-docker compose ps --all
-docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.text(); if (response.status !== 200 || body !== "{\"status\":\"ok\"}") { console.error(body); process.exit(1); } console.log(body); }).catch(error => { console.error(error.message); process.exit(1); })'
 ```
 
-O gerador recusa sobrescrever `.env`, cria o arquivo com modo `600`, gera os segredos sem inclui-los em argumentos de processos filhos e executa o validador antes da instalacao atomica. O validador ignora comentarios e linhas vazias, mas interrompe a sequencia antes do build se as seis atribuicoes obrigatorias estiverem ausentes, duplicadas ou malformadas, se algum valor estiver pendente ou fraco, ou se `DATABASE_URL` divergir das credenciais. Nenhum dos scripts imprime os valores secretos. A URL externa do health check e `http://127.0.0.1:<APP_PORT>/api/health`, com `<APP_PORT>` igual ao valor configurado em `.env`; o comando acima verifica a mesma rota por dentro do container, sem depender da porta do host.
+Se já houver um `.env` da versão anterior, o gerador não o sobrescreve. Gere um arquivo separado e use-o explicitamente:
 
-A aplicacao escuta HTTP no host. Em qualquer exposicao publica, coloque-a atras de um proxy reverso com HTTPS, limite o acesso direto a `APP_PORT` e aplique rate limiting a `/login`, `/register` e `/api/auth/*`. Consulte [o guia de operacoes](docs/operations.md) para instalacao, atualizacao, logs, backup e restauracao.
+```sh
+./scripts/generate-production-env.sh .env.example .env.identity
+docker compose --env-file .env.identity up -d --build --wait
+```
+
+Produção exige HTTPS no proxy reverso que expõe o frontend. A porta do app é vinculada ao loopback; API e banco permanecem internos. Consulte [operações](docs/operations.md) para chaves Identity, backup e atualização.
+
+CI executa verificações frontend/backend, compatibilidade OpenAPI e E2E. Pushes aprovados em `main` publicam `pge-study-control` e `pge-study-control-api` no Docker Hub usando `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN`.

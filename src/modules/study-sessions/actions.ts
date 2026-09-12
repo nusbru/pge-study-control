@@ -1,10 +1,9 @@
-"use server";
+"use client";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { requireUserId } from "@/lib/auth-user";
+import { mutateApi, navigateAfterMutation } from "@/lib/api/browser";
+import { ApiError } from "@/lib/api/errors";
+import type { SessionRequest } from "@/lib/api/contracts";
 import { studySessionInputSchema } from "./schema";
-import { createSession, deleteSession, updateSession } from "./repository";
 
 export type SessionActionState = {
   fieldErrors?: Record<string, string[] | undefined>;
@@ -12,82 +11,53 @@ export type SessionActionState = {
   values?: Record<string, string>;
 };
 
-export async function createSessionAction(
-  _previous: SessionActionState,
-  formData: FormData,
-): Promise<SessionActionState> {
-  void _previous;
-  const userId = await requireUserId();
+async function saveSession(id: string | undefined, formData: FormData): Promise<SessionActionState> {
   const values = Object.fromEntries(formData.entries()) as Record<string, string>;
   const parsed = studySessionInputSchema.safeParse(values);
-  if (!parsed.success) {
+  if (!parsed.success) return {
+    values,
+    fieldErrors: parsed.error.flatten().fieldErrors,
+    formError: parsed.error.issues[0]?.message,
+  };
+  const body: SessionRequest = {
+    studyDate: parsed.data.studyDate,
+    subject: parsed.data.subject,
+    questionType: parsed.data.questionType,
+    totalQuestions: parsed.data.totalQuestions,
+    correctAnswers: parsed.data.correctAnswers,
+    wrongAnswers: parsed.data.wrongAnswers,
+    questionListUrl: parsed.data.questionListUrl,
+    wrongQuestionListUrl: parsed.data.wrongQuestionListUrl,
+  };
+  try {
+    await mutateApi(id ? `/api/sessions/${encodeURIComponent(id)}` : "/api/sessions", id ? "PUT" : "POST", body);
+    navigateAfterMutation("/sessions");
+    return {};
+  } catch (error) {
     return {
       values,
-      fieldErrors: parsed.error.flatten().fieldErrors,
-      formError: parsed.error.issues[0]?.message,
+      fieldErrors: error instanceof ApiError ? error.problem.errors : undefined,
+      formError: error instanceof Error ? error.message : "Não foi possível salvar a sessão.",
     };
   }
-
-  try {
-    await createSession(userId, parsed.data);
-  } catch (error) {
-    console.error("Failed to create study session", error);
-    return { values, formError: "Não foi possível salvar a sessão. Tente novamente." };
-  }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/sessions");
-  redirect("/sessions");
 }
 
-export async function updateSessionAction(
-  id: string,
-  _previous: SessionActionState,
-  formData: FormData,
-): Promise<SessionActionState> {
-  void _previous;
-  const userId = await requireUserId();
-  const values = Object.fromEntries(formData.entries()) as Record<string, string>;
-  const parsed = studySessionInputSchema.safeParse(values);
-  if (!parsed.success) {
-    return {
-      values,
-      fieldErrors: parsed.error.flatten().fieldErrors,
-      formError: parsed.error.issues[0]?.message,
-    };
-  }
-
-  try {
-    const session = await updateSession(userId, id, parsed.data);
-    if (!session) return { values, formError: "Sessão não encontrada." };
-  } catch (error) {
-    console.error("Failed to update study session", error);
-    return { values, formError: "Não foi possível salvar a sessão. Tente novamente." };
-  }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/sessions");
-  redirect("/sessions");
+export async function createSessionAction(_previous: SessionActionState, formData: FormData) {
+  return saveSession(undefined, formData);
 }
 
-export async function deleteSessionAction(
-  id: string,
-  _previous: SessionActionState,
-  _formData: FormData,
-): Promise<SessionActionState> {
+export async function updateSessionAction(id: string, _previous: SessionActionState, formData: FormData) {
+  return saveSession(id, formData);
+}
+
+export async function deleteSessionAction(id: string, _previous: SessionActionState, _formData: FormData): Promise<SessionActionState> {
   void _previous;
   void _formData;
-  const userId = await requireUserId();
-
   try {
-    const deleted = await deleteSession(userId, id);
-    if (!deleted) return { formError: "Sessão não encontrada." };
+    await mutateApi(`/api/sessions/${encodeURIComponent(id)}`, "DELETE");
+    navigateAfterMutation(window.location.pathname + window.location.search);
+    return {};
   } catch (error) {
-    console.error("Failed to delete study session", error);
-    return { formError: "Não foi possível excluir a sessão. Tente novamente." };
+    return { formError: error instanceof Error ? error.message : "Não foi possível excluir a sessão." };
   }
-
-  revalidatePath("/dashboard");
-  revalidatePath("/sessions");
-  return {};
 }

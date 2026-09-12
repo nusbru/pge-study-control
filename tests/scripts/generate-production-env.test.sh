@@ -68,7 +68,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
 done < "$SUCCESS_ENV"
 [ "$generated_db_secret" = "$DB_SECRET" ] || fail 'senha do banco nao foi gerada internamente'
-[ "$generated_auth_secret" = "$AUTH_SECRET_VALUE" ] || fail 'segredo de autenticacao nao foi gerado internamente'
+[ -z "$generated_auth_secret" ] || fail 'Identity nao deve usar AUTH_SECRET'
 
 OBSERVED_ROOT="$TMP_DIR/observed-root"
 mkdir "$OBSERVED_ROOT" "$OBSERVED_ROOT/scripts"
@@ -121,7 +121,7 @@ IFS= read -r existing_contents < "$EXISTING_ENV"
 assert_no_temporary_output "$TMP_DIR" existing.env
 
 FAILED_ENV="$TMP_DIR/failed.env"
-if FAKE_OPENSSL_FAIL_AT=2 FAKE_OPENSSL_STATE="$TMP_DIR/openssl-failure.state" PATH="$FAKE_BIN:$PATH" \
+if FAKE_OPENSSL_FAIL_AT=1 FAKE_OPENSSL_STATE="$TMP_DIR/openssl-failure.state" PATH="$FAKE_BIN:$PATH" \
   "$GENERATOR" "$TEMPLATE" "$FAILED_ENV" >"$TMP_DIR/failure.out" 2>"$TMP_DIR/failure.err"; then
   fail 'gerador aceitou falha do OpenSSL'
 fi

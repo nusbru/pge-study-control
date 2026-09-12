@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn(),
 }));
 
-vi.mock("@/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/lib/auth-user", () => ({ getCurrentUser: mocks.auth }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 describe("HomePage", () => {
@@ -26,7 +26,7 @@ describe("HomePage", () => {
   });
 
   it("redirects authenticated users to the dashboard", async () => {
-    mocks.auth.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.auth.mockResolvedValue({ id: "user-1", email: "test@example.com" });
 
     await HomePage();
 

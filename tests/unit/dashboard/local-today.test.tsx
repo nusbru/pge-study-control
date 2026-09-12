@@ -3,7 +3,7 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 import { LocalTodayRedirect } from "@/modules/dashboard/local-today-redirect";
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn() }));

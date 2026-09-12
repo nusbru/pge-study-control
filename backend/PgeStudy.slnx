@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/PgeStudy.Domain/PgeStudy.Domain.csproj" />
+  <Project Path="src/PgeStudy.Application/PgeStudy.Application.csproj" />
+  <Project Path="src/PgeStudy.Infrastructure/PgeStudy.Infrastructure.csproj" />
+  <Project Path="src/PgeStudy.Host/PgeStudy.Host.csproj" />
+  <Project Path="test/PgeStudy.Unit.Tests/PgeStudy.Unit.Tests.csproj" />
+  <Project Path="test/PgeStudy.Integration.Tests/PgeStudy.Integration.Tests.csproj" />
+</Solution>

@@ -1,4 +1,4 @@
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 
 export const editableQuestionTypes = [
   QuestionType.JURISPRUDENCE,
@@ -8,7 +8,7 @@ export const editableQuestionTypes = [
 
 export type EditableQuestionType = (typeof editableQuestionTypes)[number];
 
-export const questionTypeLabels: Record<QuestionType, string> = {
+export const questionTypeLabels: Record<string, string> = {
   [QuestionType.JURISPRUDENCE]: "Jurisprudência",
   [QuestionType.BLACK_LETTER_LAW]: "Lei Seca",
   [QuestionType.DOCTRINE]: "Doutrina",

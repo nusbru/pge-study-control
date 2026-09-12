@@ -1,5 +1,4 @@
-import { createSessionAction } from "@/modules/study-sessions/actions";
-import { SessionForm } from "@/modules/study-sessions/session-form";
+import { SessionEditor } from "@/modules/study-sessions/session-editor";
 import styles from "@/modules/study-sessions/session-form.module.css";
 
 export default function NewSessionPage() {
@@ -10,7 +9,7 @@ export default function NewSessionPage() {
         <p>Registre os números enquanto o estudo ainda está fresco.</p>
       </header>
       <section className={styles.panel} aria-label="Dados da nova sessão">
-        <SessionForm action={createSessionAction} />
+        <SessionEditor />
       </section>
     </main>
   );

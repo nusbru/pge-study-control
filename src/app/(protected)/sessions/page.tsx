@@ -11,8 +11,8 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
   const { page: rawPage } = await searchParams;
   const parsedPage = Number(rawPage);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const userId = await requireUserId();
-  const { records, totalPages } = await listSessions(userId, page);
+  await requireUserId();
+  const { records, totalPages } = await listSessions(page);
 
   return (
     <main className="protectedPage">

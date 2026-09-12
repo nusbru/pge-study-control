@@ -1,11 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const authSecret = "test-only-auth-secret-at-least-32-characters";
-
-export function databaseUrlForEnvironment(environment: Readonly<Record<string, string | undefined>>) {
-  return environment.DATABASE_URL
-    ?? "postgresql://pge:pge_test_only@127.0.0.1:5433/pge_test";
-}
+const port = process.env.E2E_PORT ?? "3000";
+const baseURL = `http://127.0.0.1:${port}`;
 
 export function shouldReuseExistingServer(environment: {
   CI?: string;
@@ -21,7 +17,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL,
     screenshot: "only-on-failure",
     timezoneId: "America/Sao_Paulo",
     trace: "on-first-retry",
@@ -37,15 +33,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1",
+    command: `npm run start -- --hostname 127.0.0.1 --port ${port}`,
     env: {
-      AUTH_SECRET: authSecret,
-      DATABASE_URL: databaseUrlForEnvironment(process.env),
+      API_INTERNAL_URL: process.env.API_INTERNAL_URL ?? "http://127.0.0.1:5080",
     },
     reuseExistingServer: shouldReuseExistingServer({
       CI: process.env.CI,
       PLAYWRIGHT_REUSE_EXISTING_SERVER: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER,
     }),
-    url: "http://127.0.0.1:3000/login",
+    url: `${baseURL}/login`,
   },
 });

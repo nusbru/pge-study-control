@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 import { requireUserId } from "@/lib/auth-user";
 import { LocalTodayRedirect } from "@/modules/dashboard/local-today-redirect";
 import { PerformanceBars } from "@/modules/dashboard/performance-bars";
@@ -41,7 +41,7 @@ const questionTypeOptions = [
 ] as const;
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const userId = await requireUserId();
+  await requireUserId();
   const {
     period: rawPeriod,
     today: rawToday,
@@ -66,7 +66,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     );
   }
 
-  const data = await getDashboard(userId, period, today, questionType);
+  const data = await getDashboard(period, today, questionType);
   const overallCorrect = data.overall.correctPercentage === null
     ? null
     : formatPercentage(data.overall.correctPercentage);

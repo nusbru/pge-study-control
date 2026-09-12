@@ -1,4 +1,4 @@
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType } from "@/lib/api/contracts";
 
 const fromParam = {
   jurisprudence: QuestionType.JURISPRUDENCE,

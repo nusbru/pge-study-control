@@ -1,7 +1,6 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { StudySession } from "@/generated/prisma/client";
-import { QuestionType } from "@/generated/prisma/enums";
+import { QuestionType, type StudySession } from "@/lib/api/contracts";
 import { SessionList } from "@/modules/study-sessions/session-list";
 
 const mocks = vi.hoisted(() => ({
@@ -17,7 +16,6 @@ afterEach(cleanup);
 function session(overrides: Partial<StudySession>): StudySession {
   return {
     id: "session-1",
-    userId: "user-1",
     studyDate: new Date("2026-08-23T00:00:00.000Z"),
     subject: "Direito Civil",
     subjectKey: "direito civil",
