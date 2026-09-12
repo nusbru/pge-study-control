@@ -14,7 +14,7 @@ The `pge.identity` cookie is HttpOnly, Path=/, SameSite=Lax and Secure in produc
 
 Before login, registration, logout or session mutations, the browser obtains a fresh request token from `/api/auth/csrf`. It sends the token in `X-CSRF-TOKEN`, alongside the HttpOnly antiforgery cookie. JSON endpoints explicitly validate tokens. Fetching a new token per mutation avoids reusing anonymous tokens after login. Production persists Data Protection keys in `identity_keys`.
 
-Browser requests reach the API through Next.js rewrites, so cookie issuance reaches the browser directly. The HTTPS edge overwrites `X-Forwarded-Proto`; ASP.NET trusts the configured private proxy networks for that scheme, allowing Secure antiforgery cookies behind the internal HTTP hop. Server Components forward only the Identity cookie to a fixed internal API origin. API responses and server fetches are uncached. Successful mutations use document navigation to discard prefetched private pages and reload persisted data.
+Browser requests reach the API through the Next.js request-time proxy in `src/proxy.ts`, so cookie issuance reaches the browser directly. The HTTPS edge overwrites `X-Forwarded-Proto`; ASP.NET trusts the configured private proxy networks for that scheme, allowing Secure antiforgery cookies behind the internal HTTP hop. Server Components forward only the Identity cookie to a fixed internal API origin. API responses and server fetches are uncached. Successful mutations use document navigation to discard prefetched private pages and reload persisted data.
 
 ## Contracts and behavior
 
@@ -32,6 +32,6 @@ Local development also runs Next.js in a container (`development` Dockerfile tar
 
 Compose starts PostgreSQL → a one-shot migration command → API → frontend. The API itself does not apply migrations during normal startup. `/health` checks the frontend; `/api/health` checks database connectivity through the API. Production exposes only the frontend loopback port to the operator's HTTPS reverse proxy.
 
-The frontend image compiles its rewrite destination using the `API_INTERNAL_URL` build argument (default `http://api:8080`). SSR also reads that variable at runtime. If the API hostname changes, rebuild the frontend with the same value; changing only runtime environment does not change built rewrites.
+The frontend proxy and SSR both read `API_INTERNAL_URL` at runtime. The Docker image defaults to `http://api:8080` for Compose; deployments with a different internal API hostname override the environment variable and recreate the frontend container using the same image. No API URL build argument is needed. The frontend and API must share a network where that hostname resolves.
 
 This is a fresh database cutover: no Prisma users, passwords or sessions are imported. The new volume names intentionally preserve old volumes. Identity tables and application tables use EF migrations and snake_case mapping. Backup the database and the Data Protection key volume separately.

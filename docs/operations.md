@@ -35,7 +35,15 @@ docker compose up -d --wait
 
 O serviço `migrate` usa o target Docker `migrator`, cujo entrypoint executa `dotnet PgeStudy.Host.dll --migrate` e encerra sem iniciar o servidor HTTP. O processo API normal não aplica migrações. Não faça rollback de imagens sem verificar a compatibilidade com o esquema já aplicado.
 
-Se mudar o hostname interno da API, ajuste tanto o build argument `API_INTERNAL_URL` do frontend quanto sua variável de runtime. Os rewrites Next.js ficam fixados no build.
+Se mudar o hostname interno da API, ajuste `API_INTERNAL_URL` no ambiente do frontend e recrie o container. O proxy `/api/*` e o SSR leem essa variável em runtime; não é necessário reconstruir a imagem para cada hostname.
+
+## Frontend por imagem Docker no Dokploy
+
+Configure `API_INTERNAL_URL=http://<hostname-interno-da-api>:8080` no ambiente do frontend, sem adicionar `/api` ao final. A imagem usa `http://api:8080` como padrão para o Compose do repositório. Aplicações separadas no Dokploy precisam compartilhar uma rede Docker em que o hostname escolhido resolva para a API.
+
+Depois de alterar a variável, faça redeploy do frontend. Valide `/health` e `/api/health`; o primeiro sozinho não confirma que o frontend consegue acessar a API. `getaddrinfo ENOTFOUND` indica falha na resolução do hostname a partir do frontend.
+
+Imagens anteriores a essa correção gravavam o destino do proxy no build. Para elas, mudar somente a variável de ambiente não basta: é preciso implantar uma nova imagem contendo `src/proxy.ts`. Depois dessa atualização, mudanças de hostname exigem apenas alterar a variável e recriar o container.
 
 ## Migrations manuais no Dokploy
 
