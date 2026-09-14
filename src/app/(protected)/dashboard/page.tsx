@@ -16,12 +16,16 @@ import { getDashboard } from "@/modules/dashboard/queries";
 import { formatPercentage } from "@/modules/study-sessions/domain";
 import { questionTypeLabels } from "@/modules/study-sessions/question-type";
 import styles from "@/modules/dashboard/dashboard.module.css";
+import { getMockExamPerformance } from "@/modules/mock-exams/queries";
+import { MockExamPerformanceSection } from "@/modules/mock-exams/performance-section";
+import { parseDashboardTab } from "@/modules/dashboard/tab";
 
 type DashboardPageProps = {
   searchParams: Promise<{
     period?: string | string[];
     today?: string | string[];
     questionType?: string | string[];
+    tab?: string | string[];
   }>;
 };
 
@@ -46,7 +50,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     period: rawPeriod,
     today: rawToday,
     questionType: rawQuestionType,
+    tab: rawTab,
   } = await searchParams;
+  const tab = parseDashboardTab(rawTab);
+  const tabQuery = tab === "simulados" ? { tab } : {};
+  const description = tab === "simulados"
+    ? "Acompanhe o aproveitamento, o tempo e a evolução dos seus simulados."
+    : "Uma leitura ponderada das questões para orientar o próximo assunto de estudo.";
   const period = parseDashboardPeriod(rawPeriod);
   const questionType = parseDashboardQuestionType(rawQuestionType);
   const questionTypeParam = serializeDashboardQuestionType(questionType);
@@ -58,33 +68,47 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <header className="protectedPageHeader">
           <div>
             <h1>Desempenho</h1>
-            <p>Uma leitura ponderada das questões para orientar o próximo assunto de estudo.</p>
+            <p>{description}</p>
           </div>
         </header>
-        <LocalTodayRedirect period={period} today={today} questionType={questionType} />
+        <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} />
       </main>
     );
   }
 
-  const data = await getDashboard(period, today, questionType);
-  const overallCorrect = data.overall.correctPercentage === null
+  const data = tab === "sessoes" ? await getDashboard(period, today, questionType) : null;
+  const mockExams = tab === "simulados" ? await getMockExamPerformance(period, today) : null;
+  const overallCorrect = data?.overall.correctPercentage == null
     ? null
     : formatPercentage(data.overall.correctPercentage);
-  const overallWrong = data.overall.wrongPercentage === null
+  const overallWrong = data?.overall.wrongPercentage == null
     ? null
     : formatPercentage(data.overall.wrongPercentage);
 
   return (
     <>
-      <LocalTodayRedirect period={period} today={today} questionType={questionType} />
+      <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} />
       <main className="protectedPage">
         <header className="protectedPageHeader">
           <div>
             <h1>Desempenho</h1>
-            <p>Uma leitura ponderada das questões para orientar o próximo assunto de estudo.</p>
+            <p>{description}</p>
           </div>
-          <Link className="primaryLink" href="/sessions/new">Nova sessão</Link>
+          <Link className="primaryLink" href={tab === "sessoes" ? "/sessions/new" : "/simulados/new"}>
+            {tab === "sessoes" ? "Nova sessão" : "Novo simulado"}
+          </Link>
         </header>
+
+        <nav className={styles.tabs} aria-label="Abas do dashboard">
+          <Link href={{ pathname: "/dashboard", query: { period, today, questionType: questionTypeParam } }}
+            scroll={false} aria-current={tab === "sessoes" ? "page" : undefined}>
+            Sessões de estudo
+          </Link>
+          <Link href={{ pathname: "/dashboard", query: { period, today, questionType: questionTypeParam, tab: "simulados" } }}
+            scroll={false} aria-current={tab === "simulados" ? "page" : undefined}>
+            Simulados
+          </Link>
+        </nav>
 
         <section className={styles.ledger} aria-label="Período e resumo do desempenho">
           <div className={styles.filterRow}>
@@ -97,7 +121,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       key={value}
                       href={{
                         pathname: "/dashboard",
-                        query: { period: value, today, questionType: questionTypeParam },
+                        query: { period: value, today, questionType: questionTypeParam, ...tabQuery },
                       }}
                       aria-current={period === value ? "page" : undefined}
                     >
@@ -106,8 +130,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   ))}
                 </nav>
               </div>
-              <div className={styles.filterGroup}>
-                <h2>Tipo de questão</h2>
+              {tab === "sessoes" && <div className={styles.filterGroup}>
+                <h2>Tipo de questão das sessões</h2>
                 <nav className={styles.filters} aria-label="Filtrar tipo de questão">
                   {questionTypeOptions.map(({ value, label }) => (
                     <Link
@@ -119,14 +143,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     </Link>
                   ))}
                 </nav>
-              </div>
+              </div>}
             </div>
             <time className={styles.throughDate} dateTime={today}>
               Até {today.slice(8, 10)}/{today.slice(5, 7)}/{today.slice(0, 4)}
             </time>
           </div>
 
-          <dl className={styles.summary}>
+          {data && <dl className={styles.summary}>
             <div>
               <dt>Questões</dt>
               <dd>{data.overall.totalQuestions}</dd>
@@ -153,10 +177,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   : <>{overallCorrect}{" "}<span>{data.overall.correctAnswers} de {data.overall.totalQuestions}</span></>}
               </dd>
             </div>
-          </dl>
+          </dl>}
         </section>
 
-        <PerformanceBars data={data} />
+        {data && <PerformanceBars data={data} />}
+        {mockExams && <MockExamPerformanceSection data={mockExams} />}
       </main>
     </>
   );

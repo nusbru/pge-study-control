@@ -15,6 +15,9 @@ export function ProtectedNavigation() {
       <Link href="/sessions" aria-current={pathname.startsWith("/sessions") ? "page" : undefined}>
         Sessões
       </Link>
+      <Link href="/simulados" aria-current={pathname.startsWith("/simulados") ? "page" : undefined}>
+        Simulados
+      </Link>
     </nav>
   );
 }

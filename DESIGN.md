@@ -168,7 +168,7 @@ Componentes são refinados e contidos: familiares no uso, precisos nos estados e
 
 ### Navigation
 
-- Navegação superior direta, com marca, Dashboard, Sessões e ação de saída. O estado ativo é estrutural, não decorativo. Em telas pequenas, os mesmos destinos permanecem acessíveis sem uma barra horizontal comprimida.
+- Navegação superior direta, com marca, Dashboard, Sessões, Simulados e ação de saída. O estado ativo é estrutural, não decorativo. Em telas pequenas, os mesmos destinos permanecem acessíveis sem uma barra horizontal comprimida.
 
 ### Performance Bar
 

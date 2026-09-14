@@ -1,0 +1,49 @@
+.panel { padding: 2rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.panel h2 { margin-top: 0; text-wrap: balance; }
+.form { max-width: 48rem; display: grid; gap: 1.75rem; }
+.form fieldset { display: grid; gap: 1rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.form legend { margin-bottom: 1rem; font-weight: 750; }
+.row { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.row > * { flex: 1 1 13rem; min-width: 0; }
+.field { display: grid; align-content: start; gap: 0.5rem; }
+.field label { font-size: 0.925rem; font-weight: 700; }
+.field input, .field select, .field textarea { width: 100%; min-height: 2.875rem; padding: 0.7rem 0.8rem; border: 1px solid #92939b; border-radius: 0.625rem; color: var(--ink); background: var(--surface); font: inherit; }
+.field textarea { resize: vertical; min-height: 7rem; }
+.field input[readonly] { background: var(--paper); }
+.field [aria-invalid="true"] { border-color: #9b2f24; }
+.help { color: var(--muted); font-size: 0.925rem; line-height: 1.5; margin: 0; max-width: 70ch; }
+.error { color: #9b2f24; line-height: 1.5; margin: 0; }
+.errorBox { padding: 1rem; background: #fff5f3; border: 1px solid #9b2f24; border-radius: 0.625rem; }
+.choices { display: flex; flex-wrap: wrap; gap: 1rem; }
+.choices label { display: flex; gap: 0.6rem; align-items: center; min-height: 2.75rem; cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; }
+.actions a { display: inline-flex; min-height: 2.75rem; align-items: center; text-underline-offset: 0.2em; }
+.button { min-height: 2.875rem; padding: 0.65rem 1rem; border: 1px solid var(--ink); border-radius: 0.625rem; color: var(--ink); background: var(--surface); cursor: pointer; font: inherit; font-weight: 700; transition: background-color 180ms ease-out; }
+.button:hover { background: var(--paper); }
+.danger { color: #9b2f24; border-color: #9b2f24; }
+.form :focus-visible, .panel :focus-visible, .list :focus-visible, .pagination :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.form button:disabled, .panel button:disabled, .list button:disabled { opacity: 0.65; cursor: wait; }
+.list { display: grid; gap: 1rem; list-style: none; padding: 0; margin: 0; }
+.entry { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: center; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.entry h2 { font: inherit; font-size: 1.1rem; font-weight: 750; margin: 0 0 0.7rem; }
+.metadata { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: center; margin-bottom: 0.8rem; }
+.status { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 0.4rem; background: var(--paper); font-size: 0.875rem; font-weight: 700; }
+.running { background: #edf0fb; color: var(--correct); }
+.counts { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 1.5rem 0; }
+.counts dt { color: var(--muted); font-size: 0.875rem; margin-bottom: 0.45rem; }
+.counts dd { margin: 0; font-weight: 750; font-variant-numeric: tabular-nums; }
+.timer { font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 1rem 0; overflow-wrap: anywhere; }
+.section { margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--line); }
+.comment { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; line-height: 1.6; }
+.pagination { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; margin-top: 1.5rem; }
+.pagination a { padding-block: 0.8rem; }
+.progress { display: block; width: 100%; max-width: 32rem; height: 0.65rem; accent-color: var(--correct); margin-top: 0.5rem; }
+.evolution { list-style: none; display: grid; gap: 1rem; margin: 1.5rem 0 0; padding: 0; }
+.evolution li { display: grid; grid-template-columns: 8rem 1fr; gap: 0.75rem; align-items: center; }
+@media (max-width: 40rem) {
+  .panel { padding: 1.25rem; }
+  .entry { grid-template-columns: 1fr; padding: 1.25rem; }
+  .evolution li { grid-template-columns: 1fr; gap: 0.35rem; }
+  .counts { gap: 1rem 1.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .button { transition: none; } }

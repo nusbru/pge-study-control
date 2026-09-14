@@ -9,6 +9,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
 {
     public DbSet<StudySession> StudySessions => Set<StudySession>();
     public DbSet<StudySubject> StudySubjects => Set<StudySubject>();
+    public DbSet<MockExam> MockExams => Set<MockExam>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

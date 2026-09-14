@@ -18,6 +18,9 @@ builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IDashboardQuery, DashboardQuery>();
 builder.Services.AddScoped<StudySessions>();
+builder.Services.AddScoped<IMockExamRepository, MockExamRepository>();
+builder.Services.AddScoped<IMockExamPerformanceQuery, MockExamPerformanceQuery>();
+builder.Services.AddScoped<MockExams>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
@@ -104,6 +107,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthentication();
 app.MapStudySessions();
+app.MapMockExams();
 app.MapGet("/api/subjects", async (ISubjectRepository subjects, CancellationToken cancellationToken) =>
     TypedResults.Ok(await subjects.ListAsync(cancellationToken))).RequireAuthorization();
 app.MapGet("/api/dashboard", async (HttpContext context, IDashboardQuery query,

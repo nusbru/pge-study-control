@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { DashboardPeriod } from "./period";
+import type { DashboardTab } from "./tab";
 import {
   serializeDashboardQuestionType,
   type DashboardQuestionType,
@@ -13,12 +14,14 @@ type LocalTodayRedirectProps = {
   period: DashboardPeriod;
   today?: string | null;
   questionType: DashboardQuestionType;
+  tab?: DashboardTab;
 };
 
 export function LocalTodayRedirect({
   period,
   today,
   questionType,
+  tab = "sessoes",
 }: Readonly<LocalTodayRedirectProps>) {
   const router = useRouter();
 
@@ -35,8 +38,9 @@ export function LocalTodayRedirect({
       today: localToday,
       questionType: serializeDashboardQuestionType(questionType),
     });
+    if (tab === "simulados") query.set("tab", tab);
     router.replace(`/dashboard?${query.toString()}`, { scroll: false });
-  }, [period, questionType, router, today]);
+  }, [period, questionType, router, today, tab]);
 
   if (today) return null;
 

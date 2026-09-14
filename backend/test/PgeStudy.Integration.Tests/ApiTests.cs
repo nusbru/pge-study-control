@@ -319,6 +319,56 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         browser.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token!.Token);
     }
 
+    [Fact]
+    public async Task MockExams_CrudTrackerAndPerformance_RespectOwnershipAndCorrection()
+    {
+        using var anonymous = fixture.Browser();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/mock-exams")).StatusCode);
+        using var browser = await Login();
+        using var other = await Login();
+        var request = new MockExamRequest(new DateOnly(2026, 9, 14), 100, false, null, null, null, null, null, null, null);
+        var created = await browser.PostAsJsonAsync("/api/mock-exams", request);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var exam = (await created.Content.ReadFromJsonAsync<MockExamResponse>())!;
+        var path = $"/api/mock-exams/{exam.Id}";
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PutAsJsonAsync(path, request)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync(path + "/start", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync(path + "/finish", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.DeleteAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsync(path + "/finish", null)).StatusCode);
+        var started = (await (await browser.PostAsync(path + "/start", null)).Content.ReadFromJsonAsync<MockExamResponse>())!;
+        var repeated = (await (await browser.PostAsync(path + "/start", null)).Content.ReadFromJsonAsync<MockExamResponse>())!;
+        Assert.Equal(started.StartedAt, repeated.StartedAt);
+        var finished = (await (await browser.PostAsync(path + "/finish", null)).Content.ReadFromJsonAsync<MockExamResponse>())!;
+        Assert.Equal("COMPLETED", finished.Status);
+        Assert.NotNull(finished.DurationSeconds);
+        Assert.Equal(HttpStatusCode.Conflict, (await browser.PutAsJsonAsync(path, request with { Version = exam.Version })).StatusCode);
+        var update = request with { Version = finished.Version, StartedAt = finished.StartedAt, EndedAt = finished.EndedAt,
+            CorrectAnswers = 30, Feeling = "CALM", Comment = "Consegui manter o ritmo." };
+        var corrected = (await (await browser.PutAsJsonAsync(path, update)).Content.ReadFromJsonAsync<MockExamResponse>())!;
+        Assert.Equal(70, corrected.WrongAnswers);
+        (await browser.PostAsJsonAsync("/api/mock-exams", request with { IsHistorical = true })).EnsureSuccessStatusCode();
+        (await browser.PostAsJsonAsync("/api/mock-exams", request with { IsHistorical = true, TotalQuestions = 10,
+            CorrectAnswers = 10, StartedAt = DateTimeOffset.Parse("2026-09-14T10:00:00-03:00"),
+            EndedAt = DateTimeOffset.Parse("2026-09-14T11:00:00-03:00") })).EnsureSuccessStatusCode();
+        var summary = (await browser.GetFromJsonAsync<MockExamPerformance>("/api/mock-exams/performance?period=7d&today=2026-09-14"))!;
+        Assert.Equal(3, summary.CompletedCount);
+        Assert.Equal(2, summary.CorrectedCount);
+        Assert.Equal(2, summary.TimedCount);
+        Assert.Equal(110, summary.Overall.TotalQuestions);
+        Assert.Equal(40, summary.Overall.CorrectAnswers);
+        Assert.Equal(36.4m, summary.Overall.CorrectPercentage);
+        Assert.True(summary.TotalDurationSeconds >= 3600);
+        Assert.Equal(2, summary.Recent.Count);
+        Assert.Empty((await other.GetFromJsonAsync<MockExamPage>("/api/mock-exams"))!.Records);
+        Assert.Equal(0, (await browser.GetFromJsonAsync<MockExamPerformance>("/api/mock-exams/performance?period=7d&today=2026-09-13"))!.CompletedCount);
+        Assert.Equal(HttpStatusCode.NoContent, (await browser.DeleteAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync(path)).StatusCode);
+        browser.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.PostAsJsonAsync("/api/mock-exams", request)).StatusCode);
+    }
+
     private static SessionRequest Session() => new(new DateOnly(2026, 9, 9), Constitutionalism, "DOCTRINE", 10, 7, null, null, null);
     private static async Task<SessionResponse> Create(HttpClient client, SessionRequest request)
     {

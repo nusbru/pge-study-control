@@ -18,6 +18,7 @@ const originalTimezone = process.env.TZ;
 
 const mocks = vi.hoisted(() => ({
   getDashboard: vi.fn(),
+  getMockExamPerformance: vi.fn(),
   replace: vi.fn(),
 }));
 
@@ -33,9 +34,13 @@ vi.mock("@/modules/dashboard/queries", () => ({
   getDashboard: mocks.getDashboard,
 }));
 
+vi.mock("@/modules/mock-exams/queries", () => ({ getMockExamPerformance: mocks.getMockExamPerformance }));
+
 beforeEach(() => {
   process.env.TZ = "UTC";
   mocks.getDashboard.mockResolvedValue(dashboard);
+  mocks.getMockExamPerformance.mockResolvedValue({ completedCount: 0, correctedCount: 0, timedCount: 0,
+    totalDurationSeconds: 0, averageDurationSeconds: null, overall: dashboard.overall, recent: [] });
 });
 
 afterEach(() => {
@@ -43,6 +48,7 @@ afterEach(() => {
   vi.useRealTimers();
   process.env.TZ = originalTimezone;
   mocks.getDashboard.mockReset();
+  mocks.getMockExamPerformance.mockReset();
   mocks.replace.mockReset();
 });
 
@@ -102,6 +108,12 @@ describe("DashboardPage", () => {
       "2026-08-24",
       QuestionType.DOCTRINE,
     );
+    expect(mocks.getMockExamPerformance).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Desempenho nos simulados" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sessões de estudo" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Simulados" })).toHaveAttribute(
+      "href", "/dashboard?period=30d&today=2026-08-24&questionType=doctrine&tab=simulados",
+    );
     expect(screen.getByRole("link", { name: "Doutrina" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Lei Seca" })).toHaveAttribute(
       "href",
@@ -126,6 +138,45 @@ describe("DashboardPage", () => {
 
     expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all");
     expect(screen.getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("loads only mock exams and preserves the active tab and session filter in navigation", async () => {
+    render(await DashboardPage({ searchParams: Promise.resolve({
+      tab: "simulados", period: "90d", today: "2026-08-24", questionType: "doctrine",
+    }) }));
+
+    expect(mocks.getDashboard).not.toHaveBeenCalled();
+    expect(mocks.getMockExamPerformance).toHaveBeenCalledWith("90d", "2026-08-24");
+    expect(screen.getByRole("link", { name: "Simulados" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "Desempenho nos simulados" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Filtrar tipo de questão" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Questões", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Nova sessão" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Novo simulado" })).toHaveAttribute("href", "/simulados/new");
+    expect(screen.getByRole("link", { name: "7 dias" })).toHaveAttribute(
+      "href", "/dashboard?period=7d&today=2026-08-24&questionType=doctrine&tab=simulados",
+    );
+    expect(screen.getByRole("link", { name: "Sessões de estudo" })).toHaveAttribute(
+      "href", "/dashboard?period=90d&today=2026-08-24&questionType=doctrine",
+    );
+  });
+
+  it.each([undefined, "invalid", ["simulados", "sessoes"]])("defaults tab %j to study sessions", async tab => {
+    render(await DashboardPage({ searchParams: Promise.resolve({ tab, today: "2026-08-24" }) }));
+    expect(mocks.getDashboard).toHaveBeenCalledOnce();
+    expect(mocks.getMockExamPerformance).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Sessões de estudo" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps the mock exam tab while resolving a missing local date", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    render(await DashboardPage({ searchParams: Promise.resolve({ tab: "simulados", period: "7d" }) }));
+    expect(mocks.getDashboard).not.toHaveBeenCalled();
+    expect(mocks.getMockExamPerformance).not.toHaveBeenCalled();
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/dashboard?period=7d&today=2026-08-24&questionType=all&tab=simulados", { scroll: false },
+    );
   });
 
   it("reconciles a valid stale query date from the rendered dashboard", async () => {

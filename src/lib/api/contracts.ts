@@ -6,6 +6,10 @@ export type SubjectResponse = components["schemas"]["SubjectResponse"];
 export type SessionPage = components["schemas"]["SessionPage"];
 export type DashboardData = components["schemas"]["DashboardResponse"];
 export type CurrentUser = components["schemas"]["CurrentUser"];
+export type MockExamResponse = components["schemas"]["MockExamResponse"];
+export type MockExamRequest = components["schemas"]["MockExamRequest"];
+export type MockExamPage = components["schemas"]["MockExamPage"];
+export type MockExamPerformance = components["schemas"]["MockExamPerformance"];
 
 // The view model retains Date objects supported by React server-component serialization.
 export type StudySession = Omit<SessionResponse, "studyDate" | "createdAt" | "updatedAt"> & {

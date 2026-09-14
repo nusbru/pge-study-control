@@ -217,7 +217,7 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
   await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
   await expect(page.getByRole("heading", { name: constituentPower.subject })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Tudo" }).click();
+  await page.getByRole("link", { name: "Tudo", exact: true }).click();
   await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
   await expect(page.getByRole("heading", { name: constituentPower.subject })).toBeVisible();
 });

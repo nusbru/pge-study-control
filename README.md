@@ -1,6 +1,6 @@
 # PGE Study
 
-Plataforma responsiva para registrar sessões de estudo e acompanhar o desempenho ponderado por assunto.
+Plataforma responsiva para registrar sessões de estudo e simulados e acompanhar o desempenho ponderado.
 
 ## Arquitetura
 
@@ -88,6 +88,14 @@ O gerador inicia uma API temporária para ler seu OpenAPI; não precisa de banco
 dotnet tool restore
 dotnet ef migrations add NomeDaMigracao --project backend/src/PgeStudy.Infrastructure --startup-project backend/src/PgeStudy.Host --output-dir Persistence/Migrations
 ```
+
+## Simulados
+
+O menu **Simulados** (`/simulados`) permite cadastrar, consultar, editar e excluir provas realizadas. O registro pode ser feito com cronômetro ou como histórico, com horários opcionais. Início e fim ficam no banco em UTC; a duração é calculada pela diferença entre eles, inclusive após navegar ou fechar a página. Simulados históricos usam os horários locais informados pelo usuário.
+
+Após finalizar, informe acertos ou erros: o outro valor é calculado pelo total de questões. Correção em branco significa pendente; zero é um resultado válido. Sentimento e comentário são opcionais. O dashboard tem duas abas: **Sessões de estudo** (padrão) e **Simulados**. O período é preservado ao alternar entre elas. A aba Simulados (`/dashboard?tab=simulados`) mostra aproveitamento ponderado dos simulados corrigidos, tempo registrado e evolução dos últimos 12 resultados. O filtro de tipo de questão aparece somente em Sessões de estudo.
+
+A API está em `/api/mock-exams`, com operações `/start`, `/finish` por registro e `/performance` para os indicadores. Edições enviam a `version` recebida na consulta para detectar alterações concorrentes. A migration `AddMockExams` é aplicada pelo migrador existente ao atualizar o ambiente.
 
 ## Catálogo de assuntos
 
