@@ -22,15 +22,19 @@ OpenAPI generates `src/lib/api/generated.d.ts`. Responses use camelCase, numeric
 
 Question types retain `JURISPRUDENCE`, `BLACK_LETTER_LAW`, `DOCTRINE`, and the readable/filterable `UNSPECIFIED` compatibility value. New/edited sessions require one of the first three. Session IDs are UUIDs, while Identity owns opaque string user IDs.
 
-The API computes subject grouping keys and resolves counts independently of the client's convenience calculations. PostgreSQL CHECK constraints enforce ranges and `total = correct + wrong`. All CRUD is scoped to the authenticated owner; updates additionally include the owner as an EF concurrency token.
+Subjects are a shared catalog in `study_subjects`, with only `id` (UUID) and `subject` (unique text, including its categorization prefix). Authenticated `GET /api/subjects` returns the ordered catalog. Session mutations accept a required `subjectId`, validated against the catalog; PostgreSQL enforces a non-null foreign key and restricts deletion of referenced subjects. Responses include the ID and catalog label. The form uses a required native select populated by the API.
 
-Dashboard reporting uses one parameterized SQL statement for a consistent snapshot of subject and overall totals. It preserves inclusive windows, future-date exclusion, latest spelling, weighted percentages, null empty percentages, and safe conversion of bigint totals to JavaScript numbers. History uses 20-record pagination.
+The API resolves counts independently of the client's convenience calculations. PostgreSQL CHECK constraints enforce ranges and `total = correct + wrong`. All session CRUD is scoped to the authenticated owner; updates additionally include the owner as an EF concurrency token.
+
+Dashboard reporting uses one parameterized SQL statement for a consistent snapshot of subject and overall totals. It groups by subject UUID and joins the catalog for the label, preserving inclusive windows, future-date exclusion, weighted percentages, null empty percentages, and safe conversion of bigint totals to JavaScript numbers. History uses 20-record pagination.
 
 ## Deployment and data
 
 Local development also runs Next.js in a container (`development` Dockerfile target). Source files are bind-mounted for hot reload, while dependencies and `.next` use named volumes. A lockfile fingerprint refreshes dependencies on startup when needed. `scripts/run-local.sh` waits for frontend/API health and follows their logs; signals shut down the Compose project while retaining its volumes. Its default project is `pge-local`, overridable for isolated runs.
 
 Compose starts PostgreSQL → a one-shot migration command → API → frontend. The API itself does not apply migrations during normal startup. `/health` checks the frontend; `/api/health` checks database connectivity through the API. Production exposes only the frontend loopback port to the operator's HTTPS reverse proxy.
+
+The migration command also runs the EF `UseSeeding`/`UseAsyncSeeding` subject seed under migration locking. Its initial 26 catalog items have fixed UUIDs; subsequent runs insert missing IDs without changing existing rows. Both the Host and design-time factory configure the seed. `AddStudySubjects` assumes no pre-existing study sessions need conversion from free text.
 
 The frontend proxy and SSR both read `API_INTERNAL_URL` at runtime. The Docker image defaults to `http://api:8080` for Compose; deployments with a different internal API hostname override the environment variable and recreate the frontend container using the same image. No API URL build argument is needed. The frontend and API must share a network where that hostname resolves.
 

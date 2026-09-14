@@ -339,6 +339,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SubjectResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard": {
         parameters: {
             query?: never;
@@ -450,7 +485,8 @@ export interface components {
         SessionRequest: {
             /** Format: date */
             studyDate: string;
-            subject: string;
+            /** Format: uuid */
+            subjectId: string;
             questionType: string;
             /** Format: int32 */
             totalQuestions: null | number;
@@ -466,8 +502,9 @@ export interface components {
             id: string;
             /** Format: date */
             studyDate: string;
+            /** Format: uuid */
+            subjectId: string;
             subject: string;
-            subjectKey: string;
             questionType: string;
             /** Format: int32 */
             totalQuestions: number;
@@ -484,7 +521,8 @@ export interface components {
         };
         SubjectPerformance: {
             subject: string;
-            subjectKey: string;
+            /** Format: uuid */
+            subjectId: string;
             /** Format: int64 */
             totalQuestions: number;
             /** Format: int64 */
@@ -495,6 +533,11 @@ export interface components {
             correctPercentage: number;
             /** Format: double */
             wrongPercentage: number;
+        };
+        SubjectResponse: {
+            /** Format: uuid */
+            id: string;
+            subject: string;
         };
     };
     responses: never;

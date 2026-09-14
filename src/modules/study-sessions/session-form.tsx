@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useState, type FormEvent } from "react";
 import { formatPercentage, percentage, resolveQuestionCounts } from "./domain";
 import type { SessionActionState } from "./actions";
+import type { SubjectResponse } from "@/lib/api/contracts";
 import { editableQuestionTypes, isEditableQuestionType, questionTypeLabels } from "./question-type";
 import styles from "./session-form.module.css";
 
@@ -11,7 +12,7 @@ type CountField = "totalQuestions" | "correctAnswers" | "wrongAnswers";
 
 type FormValues = {
   studyDate: string;
-  subject: string;
+  subjectId: string;
   questionType: string;
   totalQuestions: string;
   correctAnswers: string;
@@ -26,6 +27,7 @@ export type SessionFormDefaults = {
 
 type SessionFormProps = {
   action: (previous: SessionActionState, formData: FormData) => Promise<SessionActionState>;
+  subjects: SubjectResponse[];
   defaultStudyDate?: string;
   defaultValues?: SessionFormDefaults;
   submitLabel?: string;
@@ -40,7 +42,7 @@ function toString(value: string | number | null | undefined) {
 function initialValues(defaultStudyDate?: string, defaults: SessionFormDefaults = {}): FormValues {
   return {
     studyDate: toString(defaults.studyDate) || defaultStudyDate || "",
-    subject: toString(defaults.subject),
+    subjectId: toString(defaults.subjectId),
     questionType: isEditableQuestionType(defaults.questionType) ? defaults.questionType : "",
     totalQuestions: toString(defaults.totalQuestions),
     correctAnswers: toString(defaults.correctAnswers),
@@ -68,6 +70,7 @@ function resolveCounts(values: Pick<FormValues, CountField>) {
 
 export function SessionForm({
   action,
+  subjects,
   defaultStudyDate,
   defaultValues,
   submitLabel = "Salvar sessão",
@@ -198,19 +201,24 @@ export function SessionForm({
         </div>
 
         <div className={`${styles.field} ${styles.subjectField}`}>
-          <label htmlFor="subject">Assunto</label>
-          <input
-            id="subject"
-            name="subject"
-            type="text"
+          <label htmlFor="subjectId">Assunto</label>
+          <select
+            id="subjectId"
+            name="subjectId"
             required
-            maxLength={120}
-            value={values.subject}
-            aria-invalid={fieldError("subject") ? true : undefined}
-            aria-describedby={describedBy("subject")}
-            onChange={(event) => setValues({ ...values, subject: event.target.value })}
-          />
-          {fieldError("subject") && <p className={styles.fieldError} id="subject-error">{fieldError("subject")}</p>}
+            disabled={subjects.length === 0}
+            value={values.subjectId}
+            aria-invalid={fieldError("subjectId") ? true : undefined}
+            aria-describedby={[describedBy("subjectId"), subjects.length === 0 ? "subjectId-empty" : null].filter(Boolean).join(" ") || undefined}
+            onChange={(event) => setValues({ ...values, subjectId: event.target.value })}
+          >
+            <option value="">Selecione um assunto</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.subject}</option>
+            ))}
+          </select>
+          {subjects.length === 0 && <p className={styles.fieldError} id="subjectId-empty">Nenhum assunto disponível. Solicite o cadastro dos assuntos antes de registrar uma sessão.</p>}
+          {fieldError("subjectId") && <p className={styles.fieldError} id="subjectId-error">{fieldError("subjectId")}</p>}
         </div>
       </div>
 
@@ -317,7 +325,7 @@ export function SessionForm({
       </fieldset>
 
       <div className={styles.actions}>
-        <button type="submit" disabled={pending || !dateReady}>
+        <button type="submit" disabled={pending || !dateReady || subjects.length === 0}>
           {pending ? "Salvando..." : dateReady ? submitLabel : "Preparando data..."}
         </button>
         <Link href="/sessions">Cancelar</Link>

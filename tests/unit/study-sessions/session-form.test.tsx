@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionForm } from "@/modules/study-sessions/session-form";
 import type { SessionActionState } from "@/modules/study-sessions/actions";
+import { constitutionalism, constituentPower, subjects } from "../../subjects";
 
 afterEach(cleanup);
 
@@ -11,11 +12,40 @@ function renderForm(
 ) {
   return {
     action,
-    ...render(<SessionForm action={action} defaultStudyDate="2026-08-23" />),
+    ...render(<SessionForm action={action} subjects={subjects} defaultStudyDate="2026-08-23" />),
   };
 }
 
 describe("SessionForm", () => {
+  it("requires a catalog selection and submits its GUID rather than its label", async () => {
+    const user = userEvent.setup();
+    const { action } = renderForm();
+    const select = screen.getByRole("combobox", { name: "Assunto" });
+    expect(select).toBeRequired();
+    expect(select).toHaveValue("");
+    expect(screen.getAllByRole("option")).toHaveLength(subjects.length + 1);
+    await user.selectOptions(select, constitutionalism.id);
+    await user.click(screen.getByRole("button", { name: "Salvar sessão" }));
+    await waitFor(() => expect(action).toHaveBeenCalled());
+    const submitted = (action.mock.calls[0] as unknown as [SessionActionState, FormData])[1];
+    expect(submitted.get("subjectId")).toBe(constitutionalism.id);
+    expect(submitted.has("subject")).toBe(false);
+  });
+
+  it("preselects the persisted subject when editing", () => {
+    render(<SessionForm action={vi.fn()} subjects={subjects} defaultStudyDate="2026-08-23"
+      defaultValues={{ subjectId: constituentPower.id }} />);
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveValue(constituentPower.id);
+    expect(screen.getByRole("option", { name: constituentPower.subject })).toHaveProperty("selected", true);
+  });
+
+  it("explains an empty catalog and prevents saving", () => {
+    render(<SessionForm action={vi.fn()} subjects={[]} defaultStudyDate="2026-08-23" />);
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveAccessibleDescription(/Nenhum assunto disponível/);
+    expect(screen.getByRole("button", { name: "Salvar sessão" })).toBeDisabled();
+  });
+
   it("renders every editable question type with no initial selection", () => {
     renderForm();
 
@@ -113,7 +143,7 @@ describe("SessionForm", () => {
     const user = userEvent.setup();
     renderForm(action);
 
-    await user.type(screen.getByLabelText("Assunto"), "Direito Civil");
+    await user.selectOptions(screen.getByLabelText("Assunto"), constitutionalism.id);
     await user.click(screen.getByRole("button", { name: "Salvar sessão" }));
 
     expect(screen.getByRole("button", { name: "Salvando..." })).toBeDisabled();
@@ -124,10 +154,10 @@ describe("SessionForm", () => {
   it("restores values returned by the server after a failed submission", async () => {
     const action = vi.fn(async (): Promise<SessionActionState> => ({
       formError: "Revise os dados informados.",
-      fieldErrors: { questionType: ["Selecione o tipo de questão."] },
+      fieldErrors: { questionType: ["Selecione o tipo de questão."], subjectId: ["Selecione um assunto cadastrado."] },
       values: {
         studyDate: "2026-08-20",
-        subject: "Direito Tributário",
+        subjectId: constituentPower.id,
         questionType: "DOCTRINE",
         totalQuestions: "80",
         correctAnswers: "50",
@@ -139,7 +169,7 @@ describe("SessionForm", () => {
     const user = userEvent.setup();
     renderForm(action);
 
-    await user.type(screen.getByLabelText("Assunto"), "rascunho");
+    await user.selectOptions(screen.getByLabelText("Assunto"), constitutionalism.id);
     await user.click(screen.getByRole("radio", { name: "Jurisprudência" }));
     await user.click(screen.getByRole("button", { name: "Salvar sessão" }));
 
@@ -149,7 +179,9 @@ describe("SessionForm", () => {
       "Selecione o tipo de questão.",
     );
     expect(screen.getByLabelText("Data do estudo")).toHaveValue("2026-08-20");
-    expect(screen.getByLabelText("Assunto")).toHaveValue("Direito Tributário");
+    expect(screen.getByLabelText("Assunto")).toHaveValue(constituentPower.id);
+    expect(screen.getByLabelText("Assunto")).toHaveAccessibleDescription("Selecione um assunto cadastrado.");
+    expect(screen.getByLabelText("Assunto")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Total de questões")).toHaveValue(80);
     expect(screen.getByLabelText("Acertos")).toHaveValue(50);
     expect(screen.getByLabelText("Erros")).toHaveValue(30);

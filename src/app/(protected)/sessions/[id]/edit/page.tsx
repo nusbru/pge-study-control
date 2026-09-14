@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUserId } from "@/lib/auth-user";
-import { getSession } from "@/modules/study-sessions/repository";
+import { getSession, listSubjects } from "@/modules/study-sessions/repository";
 import { SessionEditor } from "@/modules/study-sessions/session-editor";
 import styles from "@/modules/study-sessions/session-form.module.css";
 
@@ -13,6 +13,7 @@ export default async function EditSessionPage({ params }: EditSessionPageProps) 
   const { id } = await params;
   const session = await getSession(id);
   if (!session) notFound();
+  const subjects = await listSubjects();
 
   const studyDate = session.studyDate.toISOString().slice(0, 10);
 
@@ -25,10 +26,11 @@ export default async function EditSessionPage({ params }: EditSessionPageProps) 
       <section className={styles.panel} aria-label={`Editar sessão de ${session.subject}`}>
         <SessionEditor
           sessionId={session.id}
+          subjects={subjects}
           defaultStudyDate={studyDate}
           defaultValues={{
             studyDate,
-            subject: session.subject,
+            subjectId: session.subjectId,
             questionType: session.questionType,
             totalQuestions: session.totalQuestions,
             correctAnswers: session.correctAnswers,

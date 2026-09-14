@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { constitutionalism, constituentPower, constitutionalReview } from "../subjects";
 import {
   browserContextOptionsForProject,
   controlledToday,
@@ -26,7 +27,9 @@ test("candidate registers, records, edits, and deletes a study session", async (
 
   await page.getByRole("link", { name: "Nova sessão" }).click();
   await page.getByLabel("Data do estudo").fill(controlledToday);
-  await page.getByLabel("Assunto").fill("Direito Constitucional");
+  await expect(page.getByRole("combobox", { name: "Assunto" })).toHaveValue("");
+  await expect(page.getByRole("combobox", { name: "Assunto" }).getByRole("option")).toHaveCount(27);
+  await page.getByLabel("Assunto").selectOption(constitutionalism.id);
   await page.getByRole("radio", { name: "Jurisprudência" }).check();
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill("50");
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill("30");
@@ -34,7 +37,7 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await page.getByRole("button", { name: "Salvar sessão" }).click();
 
   await expect(page).toHaveURL(/\/sessions$/);
-  const createdSession = page.getByRole("listitem").filter({ hasText: "Direito Constitucional" });
+  const createdSession = page.getByRole("listitem").filter({ hasText: constitutionalism.subject });
   await expect(createdSession).toContainText("Jurisprudência");
 
   await createdSession.getByRole("link", { name: "Ver detalhes" }).click();
@@ -43,20 +46,22 @@ test("candidate registers, records, edits, and deletes a study session", async (
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
   await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
-  const subjectPerformance = page.getByRole("listitem").filter({ hasText: "Direito Constitucional" });
+  const subjectPerformance = page.getByRole("listitem").filter({ hasText: constitutionalism.subject });
   await expect(subjectPerformance).toContainText("60,0%");
   await expect(subjectPerformance).toContainText("30 acertos");
   await expect(subjectPerformance).toContainText("20 erros");
 
   await page.goto("/sessions");
-  await page.getByRole("listitem").filter({ hasText: "Direito Constitucional" })
+  await page.getByRole("listitem").filter({ hasText: constitutionalism.subject })
     .getByRole("link", { name: "Editar" }).click();
+  await expect(page.getByLabel("Assunto")).toHaveValue(constitutionalism.id);
+  await page.getByLabel("Assunto").selectOption(constituentPower.id);
   await expect(page.getByRole("radio", { name: "Jurisprudência" })).toBeChecked();
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill("40");
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill("30");
   await page.getByRole("spinbutton", { name: "Erros", exact: true }).fill("10");
   await page.getByRole("button", { name: "Salvar alterações" }).click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Direito Constitucional" })).toContainText("30 (75,0%)");
+  await expect(page.getByRole("listitem").filter({ hasText: constituentPower.subject })).toContainText("30 (75,0%)");
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
   const summary = page.getByRole("region", { name: "Período e resumo do desempenho" });
@@ -70,7 +75,7 @@ test("candidate registers, records, edits, and deletes a study session", async (
 
   await page.goto("/sessions");
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Excluir sessão de Direito Constitucional" }).click();
+  await page.getByRole("button", { name: `Excluir sessão de ${constituentPower.subject}` }).click();
   await expect(page.getByRole("heading", { name: "Seu histórico começa com uma sessão" })).toBeVisible();
 });
 
@@ -78,13 +83,29 @@ test("requires a question type when creating a study session", async ({ page }) 
   await registerAndLogin(page, "required-question-type");
   await page.goto("/sessions/new");
   await page.getByLabel("Data do estudo").fill(controlledToday);
-  await page.getByLabel("Assunto").fill("Sessão sem tipo");
+  await page.getByLabel("Assunto").selectOption(constitutionalism.id);
   await page.getByLabel("Total de questões").fill("10");
   await page.getByLabel("Acertos").fill("6");
   await page.getByRole("button", { name: "Salvar sessão" }).click();
 
   await expect(page).toHaveURL(/\/sessions\/new$/);
   await expect(page.getByText("Selecione o tipo de questão.").first()).toBeVisible();
+});
+
+test("requires a catalog subject and preserves entered values", async ({ page }) => {
+  await registerAndLogin(page, "required-subject");
+  await page.goto("/sessions/new");
+  await page.getByRole("radio", { name: "Doutrina" }).check();
+  await page.getByLabel("Total de questões").fill("10");
+  await page.getByLabel("Acertos").fill("6");
+  await page.getByRole("button", { name: "Salvar sessão" }).click();
+  await expect(page).toHaveURL(/\/sessions\/new$/);
+  await expect(page.getByRole("combobox", { name: "Assunto" })).toHaveAccessibleDescription("Selecione um assunto cadastrado.");
+  await expect(page.getByLabel("Total de questões")).toHaveValue("10");
+  await page.getByLabel("Assunto").selectOption(constitutionalism.id);
+  await page.getByRole("button", { name: "Salvar sessão" }).click();
+  await expect(page).toHaveURL(/\/sessions$/);
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
 });
 
 for (const scenario of [
@@ -105,8 +126,8 @@ for (const scenario of [
     await expect(page.getByRole("spinbutton", { name: calculated.name, exact: true })).toHaveValue(calculated.value);
     await expect(page.getByText("Calculado automaticamente", { exact: true })).toBeVisible();
     await page.getByLabel("Data do estudo").fill(controlledToday);
-    const subject = `Cálculo ${scenario.missing}`;
-    await page.getByLabel("Assunto").fill(subject);
+    const subject = constitutionalism.subject;
+    await page.getByLabel("Assunto").selectOption(constitutionalism.id);
     await page.getByRole("radio", { name: "Lei Seca" }).check();
     await page.getByRole("button", { name: "Salvar sessão" }).click();
 
@@ -123,7 +144,7 @@ test("rejects inconsistent question counts without clearing entered values", asy
   await registerAndLogin(page, "inconsistent-counts");
   await page.goto("/sessions/new");
   await page.getByLabel("Data do estudo").fill(controlledToday);
-  await page.getByLabel("Assunto").fill("Direito Administrativo");
+  await page.getByLabel("Assunto").selectOption(constitutionalism.id);
   await page.getByRole("radio", { name: "Doutrina" }).check();
 
   const total = page.getByRole("spinbutton", { name: "Total de questões", exact: true });
@@ -151,7 +172,7 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
   }));
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "Recursos seguros",
+    subject: constitutionalism.subject,
     questionType: "Lei Seca",
     totalQuestions: "10",
     correctAnswers: "6",
@@ -159,7 +180,7 @@ test("opens optional HTTP and HTTPS resources with safe link attributes", async 
     wrongQuestionListUrl: errorUrl,
   });
 
-  const session = page.getByRole("listitem").filter({ hasText: "Recursos seguros" });
+  const session = page.getByRole("listitem").filter({ hasText: constitutionalism.subject });
   for (const [name, url] of [["Lista de questões", questionUrl], ["Lista de erros", errorUrl]] as const) {
     const link = session.getByRole("link", { name });
     await expect(link).toHaveAttribute("href", url);
@@ -178,14 +199,14 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
   await registerAndLogin(page, "dashboard-periods");
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "Sessão atual",
+    subject: constitutionalism.subject,
     questionType: "Jurisprudência",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
     studyDate: "2025-03-01",
-    subject: "Sessão antiga",
+    subject: constituentPower.subject,
     questionType: "Doutrina",
     totalQuestions: "20",
     correctAnswers: "10",
@@ -193,33 +214,33 @@ test("dashboard period filters exclude old sessions", async ({ page }) => {
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
   await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
-  await expect(page.getByRole("heading", { name: "Sessão atual" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Sessão antiga" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constituentPower.subject })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Tudo" }).click();
-  await expect(page.getByRole("heading", { name: "Sessão atual" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Sessão antiga" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constituentPower.subject })).toBeVisible();
 });
 
 test("dashboard filters sessions by question type and preserves the date window", async ({ page }) => {
   await registerAndLogin(page, "dashboard-question-types");
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "Controle concentrado",
+    subject: constitutionalReview.subject,
     questionType: "Jurisprudência",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
     studyDate: "2025-03-01",
-    subject: "Jurisprudência histórica",
+    subject: constituentPower.subject,
     questionType: "Jurisprudência",
     totalQuestions: "40",
     correctAnswers: "30",
   });
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "Teoria constitucional",
+    subject: constitutionalism.subject,
     questionType: "Doutrina",
     totalQuestions: "20",
     correctAnswers: "10",
@@ -233,36 +254,36 @@ test("dashboard filters sessions by question type and preserves the date window"
   await typeFilters.getByRole("link", { name: "Jurisprudência" }).click();
   await expectDashboardUrl(page, "jurisprudence");
   await expect(totalQuestions).toHaveText("10");
-  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: constitutionalReview.subject })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constituentPower.subject })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toHaveCount(0);
 
   await typeFilters.getByRole("link", { name: "Doutrina" }).click();
   await expectDashboardUrl(page, "doctrine");
   await expect(totalQuestions).toHaveText("20");
-  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constitutionalReview.subject })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
 
   await typeFilters.getByRole("link", { name: "Todos" }).click();
   await expectDashboardUrl(page, "all");
   await expect(totalQuestions).toHaveText("30");
-  await expect(page.getByRole("heading", { name: "Controle concentrado" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Jurisprudência histórica" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Teoria constitucional" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constitutionalReview.subject })).toBeVisible();
+  await expect(page.getByRole("heading", { name: constituentPower.subject })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: constitutionalism.subject })).toBeVisible();
 });
 
-test("dashboard groups subjects after case and whitespace normalization", async ({ page }) => {
+test("dashboard groups sessions by their selected catalog subject", async ({ page }) => {
   await registerAndLogin(page, "dashboard-grouping");
   await createSession(page, {
     studyDate: "2025-04-09",
-    subject: "Direito Civil",
+    subject: constituentPower.subject,
     questionType: "Jurisprudência",
     totalQuestions: "10",
     correctAnswers: "8",
   });
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "direito   civil",
+    subject: constituentPower.subject,
     questionType: "Jurisprudência",
     totalQuestions: "20",
     correctAnswers: "10",
@@ -270,7 +291,7 @@ test("dashboard groups subjects after case and whitespace normalization", async 
 
   await page.goto(`/dashboard?period=all&today=${controlledToday}`);
   await expect(page).toHaveURL(new RegExp(`today=${controlledToday}`));
-  const heading = page.getByRole("heading", { name: "direito civil", exact: true });
+  const heading = page.getByRole("heading", { name: constituentPower.subject, exact: true });
   await expect(heading).toHaveCount(1);
   const groupedSubject = page.getByRole("listitem").filter({ has: heading });
   await expect(groupedSubject).toContainText("30 questões");
@@ -283,12 +304,12 @@ test("another authenticated user receives not found for an edit URL", async ({ p
   await registerAndLogin(page, "session-owner");
   await createSession(page, {
     studyDate: controlledToday,
-    subject: "Sessão privada",
+    subject: constitutionalism.subject,
     questionType: "Doutrina",
     totalQuestions: "10",
     correctAnswers: "7",
   });
-  const editPath = await page.getByRole("listitem").filter({ hasText: "Sessão privada" })
+  const editPath = await page.getByRole("listitem").filter({ hasText: constitutionalism.subject })
     .getByRole("link", { name: "Editar" }).getAttribute("href");
   expect(editPath).not.toBeNull();
 

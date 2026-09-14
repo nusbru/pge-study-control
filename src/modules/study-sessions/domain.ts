@@ -12,12 +12,6 @@ const percentageFormatter = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
-export function normalizeSubject(value: string) {
-  const subject = value.trim().replace(/\s+/g, " ");
-  if (!subject || subject.length > 120) throw new Error("Informe um assunto com até 120 caracteres.");
-  return { subject, subjectKey: subject.toLocaleLowerCase("pt-BR") };
-}
-
 export function resolveQuestionCounts(input: QuestionCountInput): ResolvedQuestionCounts {
   const entries = Object.values(input).filter((value) => value !== undefined);
   if (entries.length < 2) throw new Error("Informe pelo menos dois valores.");

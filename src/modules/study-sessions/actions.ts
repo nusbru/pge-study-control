@@ -21,7 +21,7 @@ async function saveSession(id: string | undefined, formData: FormData): Promise<
   };
   const body: SessionRequest = {
     studyDate: parsed.data.studyDate,
-    subject: parsed.data.subject,
+    subjectId: parsed.data.subjectId,
     questionType: parsed.data.questionType,
     totalQuestions: parsed.data.totalQuestions,
     correctAnswers: parsed.data.correctAnswers,

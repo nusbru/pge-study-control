@@ -36,7 +36,7 @@ export function PerformanceBars({ data }: Readonly<{ data: DashboardData }>) {
           const accessibleLabel = `${subject.subject}: ${correct} de acertos e ${wrong} de erros em ${subject.totalQuestions} ${questionLabel}`;
 
           return (
-            <li className={styles.subject} key={subject.subjectKey}>
+            <li className={styles.subject} key={subject.subjectId}>
               <div className={styles.subjectHeading}>
                 <h3>{subject.subject}</h3>
                 <span>{subject.totalQuestions} {questionLabel}</span>

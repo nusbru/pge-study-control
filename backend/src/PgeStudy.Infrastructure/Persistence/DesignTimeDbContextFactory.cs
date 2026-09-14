@@ -8,5 +8,5 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
     public AppDbContext CreateDbContext(string[] args) => new(new DbContextOptionsBuilder<AppDbContext>()
         .UseNpgsql(Environment.GetEnvironmentVariable("ConnectionStrings__Database")
             ?? "Host=localhost;Database=pge_design;Username=pge;Password=design-only")
-        .Options);
+        .UseSubjectSeeding().Options);
 }

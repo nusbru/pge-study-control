@@ -18,8 +18,8 @@ public sealed class StudySessionConfiguration : IEntityTypeConfiguration<StudySe
             table.HasCheckConstraint("session_question_type", "question_type IN ('JURISPRUDENCE', 'BLACK_LETTER_LAW', 'DOCTRINE', 'UNSPECIFIED')");
         });
         builder.HasKey(session => session.Id);
-        builder.Property(session => session.Subject).HasMaxLength(120).IsRequired();
-        builder.Property(session => session.SubjectKey).HasMaxLength(240).IsRequired();
+        builder.HasOne(session => session.Subject).WithMany().HasForeignKey(session => session.SubjectId)
+            .IsRequired().OnDelete(DeleteBehavior.Restrict);
         builder.Property(session => session.QuestionType).HasMaxLength(32).IsRequired();
         builder.Property(session => session.QuestionListUrl).HasMaxLength(2048);
         builder.Property(session => session.WrongQuestionListUrl).HasMaxLength(2048);
@@ -27,7 +27,7 @@ public sealed class StudySessionConfiguration : IEntityTypeConfiguration<StudySe
         builder.Property(session => session.UserId).IsConcurrencyToken();
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(session => session.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(session => new { session.UserId, session.StudyDate }).IsDescending(false, true);
-        builder.HasIndex(session => new { session.UserId, session.SubjectKey, session.StudyDate });
+        builder.HasIndex(session => new { session.UserId, session.SubjectId, session.StudyDate });
         builder.HasIndex(session => new { session.UserId, session.QuestionType, session.StudyDate });
     }
 }

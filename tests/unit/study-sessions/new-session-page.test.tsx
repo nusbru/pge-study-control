@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import NewSessionPage from "@/app/(protected)/sessions/new/page";
 import { SessionForm } from "@/modules/study-sessions/session-form";
 import type { SessionActionState } from "@/modules/study-sessions/actions";
+import { subjects } from "../../subjects";
 
 const mocks = vi.hoisted(() => ({
   createSessionAction: vi.fn(async (): Promise<SessionActionState> => ({})),
@@ -12,6 +13,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/modules/study-sessions/actions", () => ({
   createSessionAction: mocks.createSessionAction,
+}));
+
+vi.mock("@/modules/study-sessions/repository", () => ({
+  listSubjects: vi.fn(async () => subjects),
 }));
 
 const originalTimezone = process.env.TZ;
@@ -27,7 +32,8 @@ describe("new-session local date", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T00:30:00.000Z"));
     process.env.TZ = "UTC";
-    const serverHtml = renderToString(<NewSessionPage />);
+    const page = await NewSessionPage();
+    const serverHtml = renderToString(page);
     const container = document.createElement("div");
     container.innerHTML = serverHtml;
     document.body.append(container);
@@ -41,7 +47,7 @@ describe("new-session local date", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     let root!: Root;
     await act(async () => {
-      root = hydrateRoot(container, <NewSessionPage />);
+      root = hydrateRoot(container, page);
     });
 
     const dateInput = container.querySelector<HTMLInputElement>('input[name="studyDate"]');
@@ -63,6 +69,7 @@ describe("new-session local date", () => {
     const renderEditForm = () => (
       <SessionForm
         action={mocks.createSessionAction}
+        subjects={subjects}
         defaultStudyDate="2026-08-24"
         defaultValues={{ studyDate: "2026-08-24", questionType: "BLACK_LETTER_LAW" }}
       />
@@ -93,6 +100,7 @@ describe("new-session local date", () => {
     container.innerHTML = renderToString(
       <SessionForm
         action={mocks.createSessionAction}
+        subjects={subjects}
         defaultStudyDate="2026-08-24"
         defaultValues={{ questionType: "UNSPECIFIED" }}
       />,

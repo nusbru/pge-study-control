@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { studySessionInputSchema } from "@/modules/study-sessions/schema";
+import { constitutionalism } from "../../subjects";
 
 const valid = {
   studyDate: "2026-08-23",
-  subject: "Direito Constitucional",
+  subjectId: constitutionalism.id,
   questionType: "JURISPRUDENCE",
   totalQuestions: "50",
   correctAnswers: "30",
@@ -23,8 +24,7 @@ describe("studySessionInputSchema", () => {
   it("parses form strings and resolves the missing count", () => {
     expect(studySessionInputSchema.parse(valid)).toMatchObject({
       studyDate: "2026-08-23",
-      subject: "Direito Constitucional",
-      subjectKey: "direito constitucional",
+      subjectId: constitutionalism.id,
       questionType: "JURISPRUDENCE",
       totalQuestions: 50,
       correctAnswers: 30,
@@ -71,13 +71,13 @@ describe("studySessionInputSchema", () => {
     expectFieldError({ ...valid, studyDate }, "studyDate", "Informe uma data válida.");
   });
 
-  it.each(["   ", `  ${"a".repeat(121)}  `])(
-    "attaches normalized subject error for %j to the subject field",
-    (subject) => {
+  it.each([undefined, null, "", "   ", "1000", "Constitucionalismo", "00000000-0000-0000-0000-000000000000"])(
+    "attaches invalid subject ID error for %j to the subjectId field",
+    (subjectId) => {
       expectFieldError(
-        { ...valid, subject },
-        "subject",
-        "Informe um assunto com até 120 caracteres.",
+        { ...valid, subjectId },
+        "subjectId",
+        "Selecione um assunto cadastrado.",
       );
     },
   );
@@ -85,15 +85,15 @@ describe("studySessionInputSchema", () => {
   it.each([
     ["   ", "não-numérico"],
     [`  ${"a".repeat(121)}  `, "1000001"],
-  ])("reports subject and primitive count errors together", (subject, totalQuestions) => {
-    const result = studySessionInputSchema.safeParse({ ...valid, subject, totalQuestions });
+  ])("reports subject and primitive count errors together", (subjectId, totalQuestions) => {
+    const result = studySessionInputSchema.safeParse({ ...valid, subjectId, totalQuestions });
 
     expect(result.success).toBe(false);
     if (result.success) throw new Error("A validação deveria falhar.");
     expect(result.error.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        path: ["subject"],
-        message: "Informe um assunto com até 120 caracteres.",
+        path: ["subjectId"],
+        message: "Selecione um assunto cadastrado.",
       }),
       expect.objectContaining({
         path: ["totalQuestions"],
@@ -115,7 +115,7 @@ describe("studySessionInputSchema", () => {
 
   it.each([
     ["studyDate", 20260823, "Informe uma data válida."],
-    ["subject", 42, "Informe um assunto com até 120 caracteres."],
+    ["subjectId", 42, "Selecione um assunto cadastrado."],
     ["totalQuestions", true, "Use números inteiros entre 0 e 1.000.000."],
     ["questionListUrl", 42, "Informe uma URL HTTP ou HTTPS válida."],
     ["questionListUrl", `https://example.com/${"a".repeat(2_048)}`, "Informe uma URL HTTP ou HTTPS válida."],

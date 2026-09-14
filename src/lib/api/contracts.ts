@@ -2,6 +2,7 @@ import type { components } from "./generated";
 
 export type SessionResponse = components["schemas"]["SessionResponse"];
 export type SessionRequest = components["schemas"]["SessionRequest"];
+export type SubjectResponse = components["schemas"]["SubjectResponse"];
 export type SessionPage = components["schemas"]["SessionPage"];
 export type DashboardData = components["schemas"]["DashboardResponse"];
 export type CurrentUser = components["schemas"]["CurrentUser"];

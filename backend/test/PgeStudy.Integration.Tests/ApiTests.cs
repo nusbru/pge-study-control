@@ -16,6 +16,91 @@ namespace PgeStudy.Integration.Tests;
 public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
     private const string Password = "correct horse";
+    private static readonly Guid Constitutionalism = new("98287845-45f8-46db-9d4c-4d4139ded7b1");
+    private static readonly Guid ConstituentPower = new("7ae8cde0-ca6e-4698-889f-af340b7fb063");
+
+    [Fact]
+    public async Task Subjects_SeedAndRepeatMigrations_PreserveCatalogAndSessionReferences()
+    {
+        using var anonymous = fixture.Browser();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/subjects")).StatusCode);
+        using var browser = await Login();
+        var before = (await browser.GetFromJsonAsync<SubjectResponse[]>("/api/subjects"))!;
+        Assert.Equal(26, before.Length);
+        Assert.Equal(26, before.Select(subject => subject.Id).Distinct().Count());
+        Assert.Equal(26, before.Select(subject => subject.Subject).Distinct().Count());
+        Assert.All(before, subject => Assert.NotEqual(Guid.Empty, subject.Id));
+        Assert.Equal(before.OrderBy(subject => subject.Subject, StringComparer.Ordinal), before);
+        Assert.Contains(before, subject => subject.Subject == "5000 — Tributos em Geral e Espécies Tributárias");
+        Assert.Contains(before, subject => subject.Subject == "7000 — Introdução ao Direito Ambiental, Bens Ambientais e Princípios");
+        var session = await Create(browser, Session());
+        var persisted = await browser.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}");
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+        db.Database.Migrate();
+        Assert.Equal(before, (await browser.GetFromJsonAsync<SubjectResponse[]>("/api/subjects"))!);
+        Assert.Equal(persisted, await browser.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}"));
+        Assert.False(db.Database.HasPendingModelChanges());
+    }
+
+    [Fact]
+    public async Task Sessions_InvalidSubject_RejectsCreateAndUpdateWithoutChangingSession()
+    {
+        using var browser = await Login();
+        var session = await Create(browser, Session());
+        var persisted = await browser.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}");
+        foreach (var id in new[] { Guid.Empty, Guid.NewGuid() })
+        {
+            var request = Session() with { SubjectId = id };
+            foreach (var response in new[]
+            {
+                await browser.PostAsJsonAsync("/api/sessions", request),
+                await browser.PutAsJsonAsync($"/api/sessions/{session.Id}", request)
+            })
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+                var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+                Assert.True(problem.GetProperty("errors").TryGetProperty("subjectId", out _));
+            }
+        }
+        foreach (var id in new object?[] { null, "not-a-guid", 1000 })
+        {
+            var response = await browser.PostAsJsonAsync("/api/sessions", new
+            {
+                studyDate = "2026-09-09", subjectId = id, questionType = "DOCTRINE", totalQuestions = 10, correctAnswers = 7
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        var missing = await browser.PostAsJsonAsync("/api/sessions", new
+        {
+            studyDate = "2026-09-09", subject = "Texto livre", questionType = "DOCTRINE", totalQuestions = 10, correctAnswers = 7
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.Equal(persisted, await browser.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}"));
+        Assert.Single((await browser.GetFromJsonAsync<SessionPage>("/api/sessions"))!.Records);
+    }
+
+    [Fact]
+    public async Task Database_SubjectConstraints_RejectInvalidReferencesAndDeletingUsedSubject()
+    {
+        using var browser = await Login();
+        var session = await Create(browser, Session());
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var nullError = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE study_sessions SET subject_id = NULL WHERE id = {session.Id}"));
+        Assert.Equal(PostgresErrorCodes.NotNullViolation, nullError.SqlState);
+        var foreignError = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE study_sessions SET subject_id = {Guid.NewGuid()} WHERE id = {session.Id}"));
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, foreignError.SqlState);
+        var deleteError = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM study_subjects WHERE id = {session.SubjectId}"));
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, deleteError.SqlState);
+        var duplicate = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO study_subjects (id, subject) VALUES ({Guid.NewGuid()}, {session.Subject})"));
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
+    }
 
     [Fact]
     public async Task Authentication_CookiesAndCsrf_ProtectsRequestsAndLogsOut()
@@ -57,8 +142,13 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         Assert.Equal(HttpStatusCode.NotFound, (await other.PutAsJsonAsync($"/api/sessions/{session.Id}", Session())).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await other.DeleteAsync($"/api/sessions/{session.Id}")).StatusCode);
         Assert.Empty((await other.GetFromJsonAsync<SessionPage>("/api/sessions"))!.Records);
-        var updated = await owner.PutAsJsonAsync($"/api/sessions/{session.Id}", Session() with { Subject = "Penal" });
-        Assert.Equal("Penal", (await updated.Content.ReadFromJsonAsync<SessionResponse>())!.Subject);
+        var updated = await owner.PutAsJsonAsync($"/api/sessions/{session.Id}", Session() with { SubjectId = ConstituentPower });
+        var result = (await updated.Content.ReadFromJsonAsync<SessionResponse>())!;
+        Assert.Equal("1002 — Poder Constituinte", result.Subject);
+        Assert.Equal(ConstituentPower, result.SubjectId);
+        var persisted = (await owner.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}"))!;
+        Assert.Equal(result.SubjectId, persisted.SubjectId);
+        Assert.Equal(result.Subject, persisted.Subject);
         Assert.Equal(HttpStatusCode.NoContent, (await owner.DeleteAsync($"/api/sessions/{session.Id}")).StatusCode);
     }
 
@@ -67,16 +157,17 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     {
         using var owner = await Login();
         using var other = await Login();
-        await Create(owner, Session() with { Subject = "  Civil ", TotalQuestions = 10, CorrectAnswers = 9 });
-        await Create(owner, Session() with { Subject = "CIVIL", TotalQuestions = 100, CorrectAnswers = 10 });
-        await Create(owner, Session() with { Subject = "Old", StudyDate = new DateOnly(2026, 1, 1) });
-        await Create(owner, Session() with { Subject = "Future", StudyDate = new DateOnly(2027, 1, 1) });
-        await Create(owner, Session() with { Subject = "Other type", QuestionType = "JURISPRUDENCE" });
+        await Create(owner, Session() with { TotalQuestions = 10, CorrectAnswers = 9 });
+        await Create(owner, Session() with { TotalQuestions = 100, CorrectAnswers = 10 });
+        await Create(owner, Session() with { SubjectId = ConstituentPower, StudyDate = new DateOnly(2026, 1, 1) });
+        await Create(owner, Session() with { SubjectId = ConstituentPower, StudyDate = new DateOnly(2027, 1, 1) });
+        await Create(owner, Session() with { SubjectId = ConstituentPower, QuestionType = "JURISPRUDENCE" });
         await Create(other, Session() with { TotalQuestions = 1_000_000, CorrectAnswers = 1_000_000 });
         var dashboard = await owner.GetFromJsonAsync<DashboardResponse>("/api/dashboard?period=7d&today=2026-09-09&questionType=doctrine");
         Assert.Equal(110, dashboard!.Overall.TotalQuestions);
         Assert.Equal(17.3m, dashboard.Overall.CorrectPercentage);
-        Assert.Equal("CIVIL", Assert.Single(dashboard.Subjects).Subject);
+        Assert.Equal("1000 — Constitucionalismo", Assert.Single(dashboard.Subjects).Subject);
+        Assert.Equal(Constitutionalism, dashboard.Subjects[0].SubjectId);
         var all = await owner.GetFromJsonAsync<DashboardResponse>("/api/dashboard?period=all&today=2026-09-09&questionType=all");
         Assert.Equal(130, all!.Overall.TotalQuestions);
         var empty = await owner.GetFromJsonAsync<DashboardResponse>("/api/dashboard?period=all&today=0001-01-01");
@@ -94,7 +185,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         var problem = await invalid.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(problem.GetProperty("errors").TryGetProperty("totalQuestions", out _));
         Assert.Equal(HttpStatusCode.BadRequest,
-            (await browser.PostAsJsonAsync("/api/sessions", new { subject = "Civil", questionType = "DOCTRINE", totalQuestions = 10, correctAnswers = 7 })).StatusCode);
+            (await browser.PostAsJsonAsync("/api/sessions", new { subjectId = Constitutionalism, questionType = "DOCTRINE", totalQuestions = 10, correctAnswers = 7 })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await browser.PostAsJsonAsync("/api/sessions", Session() with { QuestionType = "UNSPECIFIED" })).StatusCode);
         for (var index = 0; index < 21; index++) await Create(browser, Session() with { StudyDate = new DateOnly(2026, 9, 1).AddDays(index) });
@@ -148,18 +239,17 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
-    public async Task Dashboard_UnicodeKeysAndBigintTotals_PreservePrecision()
+    public async Task Dashboard_CatalogAndBigintTotals_PreservePrecision()
     {
         using var browser = await Login();
-        var unicode = await Create(browser, Session() with { Subject = new string('İ', 120) });
-        Assert.Equal(string.Concat(Enumerable.Repeat("i\u0307", 120)), unicode.SubjectKey);
+        await Create(browser, Session());
         var me = await browser.GetFromJsonAsync<CurrentUser>("/api/auth/me");
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO study_sessions (id, user_id, study_date, subject, subject_key, question_type,
+            INSERT INTO study_sessions (id, user_id, study_date, subject_id, question_type,
                 total_questions, correct_answers, wrong_answers, created_at, updated_at)
-            SELECT gen_random_uuid(), {me!.Id}, DATE '2026-09-09', 'Bulk', 'bulk', 'DOCTRINE',
+            SELECT gen_random_uuid(), {me!.Id}, DATE '2026-09-09', {ConstituentPower}, 'DOCTRINE',
                 1000000, 1000000, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             FROM generate_series(1, 2148)
             """);
@@ -229,7 +319,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         browser.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token!.Token);
     }
 
-    private static SessionRequest Session() => new(new DateOnly(2026, 9, 9), "Civil", "DOCTRINE", 10, 7, null, null, null);
+    private static SessionRequest Session() => new(new DateOnly(2026, 9, 9), Constitutionalism, "DOCTRINE", 10, 7, null, null, null);
     private static async Task<SessionResponse> Create(HttpClient client, SessionRequest request)
     {
         var response = await client.PostAsJsonAsync("/api/sessions", request);

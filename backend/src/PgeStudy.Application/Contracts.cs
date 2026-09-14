@@ -3,19 +3,19 @@ using PgeStudy.Domain;
 namespace PgeStudy.Application;
 
 public sealed record SessionRequest([property: System.Text.Json.Serialization.JsonRequired] DateOnly StudyDate,
-    string Subject, string QuestionType,
+    Guid SubjectId, string QuestionType,
     int? TotalQuestions, int? CorrectAnswers, int? WrongAnswers, string? QuestionListUrl, string? WrongQuestionListUrl)
 {
-    public SessionValues ToValues() => new(StudyDate, Subject, QuestionType, TotalQuestions,
+    public SessionValues ToValues(StudySubject subject) => new(StudyDate, subject, QuestionType, TotalQuestions,
         CorrectAnswers, WrongAnswers, QuestionListUrl, WrongQuestionListUrl);
 }
 
-public sealed record SessionResponse(Guid Id, DateOnly StudyDate, string Subject, string SubjectKey,
+public sealed record SessionResponse(Guid Id, DateOnly StudyDate, Guid SubjectId, string Subject,
     string QuestionType, int TotalQuestions, int CorrectAnswers, int WrongAnswers,
     string? QuestionListUrl, string? WrongQuestionListUrl, DateTime CreatedAt, DateTime UpdatedAt)
 {
     public static SessionResponse From(StudySession session) => new(session.Id, session.StudyDate,
-        session.Subject, session.SubjectKey, session.QuestionType, session.TotalQuestions,
+        session.SubjectId, session.Subject.Subject, session.QuestionType, session.TotalQuestions,
         session.CorrectAnswers, session.WrongAnswers, session.QuestionListUrl, session.WrongQuestionListUrl,
         session.CreatedAt, session.UpdatedAt);
 }
@@ -33,7 +33,7 @@ public sealed record Performance(long TotalQuestions, long CorrectAnswers, long 
             total == 0 ? null : QuestionCounts.Percentage(wrong, total));
     }
 }
-public sealed record SubjectPerformance(string Subject, string SubjectKey, long TotalQuestions,
+public sealed record SubjectPerformance(string Subject, Guid SubjectId, long TotalQuestions,
     long CorrectAnswers, long WrongAnswers, decimal CorrectPercentage, decimal WrongPercentage);
 public sealed record DashboardResponse(Performance Overall, IReadOnlyList<SubjectPerformance> Subjects);
 

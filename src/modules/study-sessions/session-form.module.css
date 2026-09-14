@@ -60,6 +60,7 @@
 }
 
 .field {
+  min-width: 0;
   display: grid;
   gap: 0.45rem;
 }
@@ -72,8 +73,10 @@
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
+  min-width: 0;
   min-height: 2.875rem;
   padding: 0.7rem 0.8rem;
   border: 1px solid #a4a5aa;
@@ -82,11 +85,13 @@
   color: var(--ink);
 }
 
-.field input:hover {
+.field input:hover,
+.field select:hover {
   border-color: var(--ink);
 }
 
 .field input:focus-visible,
+.field select:focus-visible,
 .typeOptions input:focus-visible,
 .actions button:focus-visible,
 .actions a:focus-visible {
@@ -94,12 +99,18 @@
   outline-offset: 2px;
 }
 
-.field input[aria-invalid="true"] {
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"] {
   border-color: #9b2f24;
 }
 
 .field input::placeholder {
   color: #656771;
+}
+
+.field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .fieldError,

@@ -25,7 +25,7 @@ const studySession: StudySession = {
   id: "session-1",
   studyDate: new Date("2026-08-23T00:00:00.000Z"),
   subject: "Direito Civil",
-  subjectKey: "direito civil",
+  subjectId: "98287845-45f8-46db-9d4c-4d4139ded7b1",
   questionType: QuestionType.JURISPRUDENCE,
   totalQuestions: 50,
   correctAnswers: 30,

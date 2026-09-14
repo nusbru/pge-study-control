@@ -68,7 +68,7 @@ services:
 
 Configure as três variáveis no ambiente do serviço. Conecte-o à rede do banco se este estiver em outro projeto; o hostname da string de conexão deve ser acessível pelo container. Aguarde o banco ficar disponível antes de executar.
 
-O container aplica as migrations pendentes e encerra com código `0` em caso de sucesso. Uma nova execução não reaplica migrations já registradas. Se ocorrer erro, o processo encerra com código diferente de zero; consulte os logs e corrija o problema antes de iniciar a nova API. O estado encerrado é esperado para esse serviço.
+O container aplica as migrations pendentes, executa o seed de assuntos pelo EF Core e encerra com código `0` em caso de sucesso. Uma nova execução não reaplica migrations já registradas, mas verifica o seed e insere assuntos ausentes sem duplicar os existentes. Se ocorrer erro, o processo encerra com código diferente de zero; consulte os logs e corrija o problema antes de iniciar a nova API. O estado encerrado é esperado para esse serviço.
 
 Para construir e executar o mesmo target localmente com o Compose do repositório:
 

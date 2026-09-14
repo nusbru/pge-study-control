@@ -76,7 +76,7 @@ type SessionInput = {
 export async function createSession(page: Page, input: SessionInput) {
   await page.goto("/sessions/new");
   await page.getByLabel("Data do estudo").fill(input.studyDate);
-  await page.getByLabel("Assunto").fill(input.subject);
+  await page.getByRole("combobox", { name: "Assunto" }).selectOption({ label: input.subject });
   await page.getByRole("radio", { name: input.questionType }).check();
   await page.getByRole("spinbutton", { name: "Total de questões", exact: true }).fill(input.totalQuestions);
   await page.getByRole("spinbutton", { name: "Acertos", exact: true }).fill(input.correctAnswers);

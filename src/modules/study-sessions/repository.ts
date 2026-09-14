@@ -1,6 +1,10 @@
 import { serverApi } from "@/lib/api/server";
 import { ApiError } from "@/lib/api/errors";
-import { sessionViewModel, type SessionResponse, type SessionPage } from "@/lib/api/contracts";
+import { sessionViewModel, type SessionResponse, type SessionPage, type SubjectResponse } from "@/lib/api/contracts";
+
+export async function listSubjects() {
+  return serverApi<SubjectResponse[]>("/api/subjects");
+}
 
 export async function getSession(id: string) {
   try {

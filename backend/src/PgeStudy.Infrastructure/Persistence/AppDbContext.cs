@@ -8,6 +8,7 @@ namespace PgeStudy.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<StudySession> StudySessions => Set<StudySession>();
+    public DbSet<StudySubject> StudySubjects => Set<StudySubject>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

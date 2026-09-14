@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { controlledToday, createSession, registerAndLogin, test } from "./helpers";
+import { environmentalLaw } from "../subjects";
 
 const viewports = [
   { name: "mobile", width: 390, height: 844 },
@@ -27,8 +28,8 @@ async function expectAccessiblePage(page: Page, pageName: string) {
   }));
   expect(dimensions.scrollWidth, `${pageName} must not overflow horizontally`).toBe(dimensions.clientWidth);
 
-  const unlabeledInputs = await page.locator("input").evaluateAll((inputs) => inputs.flatMap((input) => {
-    const element = input as HTMLInputElement;
+  const unlabeledInputs = await page.locator("input, select").evaluateAll((inputs) => inputs.flatMap((input) => {
+    const element = input as HTMLInputElement | HTMLSelectElement;
     if (element.type === "hidden") return [];
     const hasAccessibleName = element.labels?.length
       || element.hasAttribute("aria-label")
@@ -86,6 +87,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       await expect(page.getByRole("radio", { name: "Lei Seca" })).toBeVisible();
       await expect(page.getByRole("radio", { name: "Doutrina" })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} new session`);
+      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto" }), `${viewport.name} subject select`);
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("radio", { name: "Jurisprudência" }),
@@ -95,7 +97,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
 
     await createSession(page, {
       studyDate: controlledToday,
-      subject: `Acessibilidade ${viewport.name}`,
+      subject: environmentalLaw.subject,
       questionType: "Jurisprudência",
       totalQuestions: "10",
       correctAnswers: "6",
@@ -111,7 +113,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       );
       await expectKeyboardFocusVisible(
         page,
-        page.getByRole("button", { name: `Excluir sessão de Acessibilidade ${viewport.name}` }),
+        page.getByRole("button", { name: `Excluir sessão de ${environmentalLaw.subject}` }),
         `${viewport.name} delete action`,
       );
     });
@@ -138,7 +140,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
         expect(questionTypeHeading.top).toBeGreaterThan(periodHeading.bottom);
       }
       await expect(page.getByRole("img", {
-        name: `Acessibilidade ${viewport.name}: 60,0% de acertos e 40,0% de erros em 10 questões`,
+        name: `${environmentalLaw.subject}: 60,0% de acertos e 40,0% de erros em 10 questões`,
       })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} dashboard`);
       await expectKeyboardFocusVisible(
@@ -158,9 +160,8 @@ test("core pages remain responsive and accessible", async ({ page }) => {
   }
 });
 
-test("a 120-character unbroken subject does not overflow mobile history", async ({ page }) => {
-  const subject = "A".repeat(120);
-  expect(subject).toHaveLength(120);
+test("a long catalog subject does not overflow mobile history", async ({ page }) => {
+  const subject = environmentalLaw.subject;
   await page.setViewportSize(viewports[0]);
   await registerAndLogin(page, "subject-boundary");
   await createSession(page, {
@@ -172,5 +173,5 @@ test("a 120-character unbroken subject does not overflow mobile history", async 
   });
 
   await expect(page.getByRole("heading", { name: subject })).toBeVisible();
-  await expectAccessiblePage(page, "mobile history with 120-character subject");
+  await expectAccessiblePage(page, "mobile history with long catalog subject");
 });

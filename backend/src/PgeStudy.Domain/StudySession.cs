@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace PgeStudy.Domain;
 
 public static class QuestionTypes
@@ -11,17 +9,17 @@ public static class QuestionTypes
     public static bool IsEditable(string? value) => value is Jurisprudence or BlackLetterLaw or Doctrine;
 }
 
-public sealed record SessionValues(DateOnly StudyDate, string Subject, string QuestionType,
+public sealed record SessionValues(DateOnly StudyDate, StudySubject Subject, string QuestionType,
     int? TotalQuestions, int? CorrectAnswers, int? WrongAnswers,
     string? QuestionListUrl, string? WrongQuestionListUrl);
 
-public sealed partial class StudySession
+public sealed class StudySession
 {
     public Guid Id { get; private set; }
     public string UserId { get; private set; } = "";
     public DateOnly StudyDate { get; private set; }
-    public string Subject { get; private set; } = "";
-    public string SubjectKey { get; private set; } = "";
+    public Guid SubjectId { get; private set; }
+    public StudySubject Subject { get; private set; } = null!;
     public string QuestionType { get; private set; } = "";
     public int TotalQuestions { get; private set; }
     public int CorrectAnswers { get; private set; }
@@ -43,18 +41,16 @@ public sealed partial class StudySession
 
     public void Update(SessionValues values, DateTime now)
     {
-        var subject = Whitespace().Replace(values.Subject ?? "", " ").Trim(' ');
-        if (subject.Length is 0 or > 120)
-            throw new ValidationException("subject", "Informe um assunto com até 120 caracteres.");
+        if (values.Subject is null || values.Subject.Id == Guid.Empty)
+            throw new ValidationException("subjectId", "Selecione um assunto cadastrado.");
         if (!QuestionTypes.IsEditable(values.QuestionType))
             throw new ValidationException("questionType", "Selecione o tipo de questão.");
         var counts = QuestionCounts.Resolve(values.TotalQuestions, values.CorrectAnswers, values.WrongAnswers);
         var questionsUrl = ValidateUrl(values.QuestionListUrl, "questionListUrl");
         var wrongUrl = ValidateUrl(values.WrongQuestionListUrl, "wrongQuestionListUrl");
         StudyDate = values.StudyDate;
-        Subject = subject;
-        // Unicode full lowercase expands capital dotted I; .NET simple casing does not.
-        SubjectKey = subject.Replace("İ", "i\u0307").ToLowerInvariant();
+        Subject = values.Subject;
+        SubjectId = values.Subject.Id;
         QuestionType = values.QuestionType;
         (TotalQuestions, CorrectAnswers, WrongAnswers) = (counts.Total, counts.Correct, counts.Wrong);
         (QuestionListUrl, WrongQuestionListUrl) = (questionsUrl, wrongUrl);
@@ -70,6 +66,4 @@ public sealed partial class StudySession
         return value;
     }
 
-    [GeneratedRegex("[\\u0009-\\u000D\\u0020\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+")]
-    private static partial Regex Whitespace();
 }

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { normalizeSubject, resolveQuestionCounts } from "./domain";
+import { resolveQuestionCounts } from "./domain";
 import { editableQuestionTypes } from "./question-type";
 
 const COUNT_ERROR = "Use números inteiros entre 0 e 1.000.000.";
 const DATE_ERROR = "Informe uma data válida.";
 const QUESTION_TYPE_ERROR = "Selecione o tipo de questão.";
-const SUBJECT_ERROR = "Informe um assunto com até 120 caracteres.";
+const SUBJECT_ERROR = "Selecione um assunto cadastrado.";
 const URL_ERROR = "Informe uma URL HTTP ou HTTPS válida.";
 
 const optionalCount = z.preprocess(
@@ -27,17 +27,8 @@ const optionalHttpUrl = z.preprocess(
 
 const editableQuestionType = z.enum(editableQuestionTypes, { error: QUESTION_TYPE_ERROR });
 
-const normalizedSubject = z.string({ error: SUBJECT_ERROR }).transform((value, context) => {
-  try {
-    return normalizeSubject(value);
-  } catch (error) {
-    context.addIssue({
-      code: "custom",
-      message: error instanceof Error ? error.message : SUBJECT_ERROR,
-    });
-    return z.NEVER;
-  }
-});
+const subjectId = z.guid({ error: SUBJECT_ERROR })
+  .refine((value) => value !== "00000000-0000-0000-0000-000000000000", { error: SUBJECT_ERROR });
 
 function isCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -51,7 +42,7 @@ function isCalendarDate(value: string) {
 
 const rawStudySessionSchema = z.object({
   studyDate: z.string({ error: DATE_ERROR }).refine(isCalendarDate, DATE_ERROR),
-  subject: normalizedSubject,
+  subjectId,
   questionType: editableQuestionType,
   totalQuestions: optionalCount,
   correctAnswers: optionalCount,
@@ -65,7 +56,7 @@ export const studySessionInputSchema = rawStudySessionSchema.transform((data, co
     return {
       studyDate: data.studyDate,
       questionType: data.questionType,
-      ...data.subject,
+      subjectId: data.subjectId,
       ...resolveQuestionCounts({
         totalQuestions: data.totalQuestions,
         correctAnswers: data.correctAnswers,

@@ -16,7 +16,7 @@ const dashboard: DashboardData = {
   subjects: [
     {
       subject: "Direito Civil",
-      subjectKey: "direito civil",
+      subjectId: "98287845-45f8-46db-9d4c-4d4139ded7b1",
       totalQuestions: 12,
       correctAnswers: 9,
       wrongAnswers: 3,

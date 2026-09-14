@@ -89,6 +89,26 @@ dotnet tool restore
 dotnet ef migrations add NomeDaMigracao --project backend/src/PgeStudy.Infrastructure --startup-project backend/src/PgeStudy.Host --output-dir Persistence/Migrations
 ```
 
+## Catálogo de assuntos
+
+Toda sessão exige um assunto cadastrado. A tabela `study_subjects` contém `id` (GUID) e `subject`; o código de categorização faz parte do texto, por exemplo `1000 — Constitucionalismo`. O formulário carrega as opções de `GET /api/subjects`, autenticado, e envia `subjectId` na criação e edição.
+
+O seed inicial com 26 assuntos fica em `backend/src/PgeStudy.Infrastructure/Persistence/SubjectSeed.cs`. Ele usa `UseSeeding`/`UseAsyncSeeding` do EF Core, com GUIDs fixos e inserção somente dos registros ausentes. O serviço Compose `migrate` já aplica a migration e executa o seed. Para executar diretamente, configure `ConnectionStrings__Database` no ambiente e use:
+
+```sh
+dotnet run --project backend/src/PgeStudy.Host --no-launch-profile -- --migrate
+```
+
+Também é possível usar o CLI do EF com a mesma variável de conexão:
+
+```sh
+dotnet ef database update --project backend/src/PgeStudy.Infrastructure --startup-project backend/src/PgeStudy.Host
+```
+
+Para acrescentar assuntos, adicione pares de **novo GUID fixo + texto** em `SubjectSeed.cs`, publique o migrador atualizado e execute-o novamente. Preserve os GUIDs existentes. A rotina não duplica registros nem altera vínculos de sessões e executa mesmo sem migrations pendentes. Ela insere novos itens; renomeações de itens existentes devem ser feitas por uma migration de dados, preservando o ID. Scripts SQL de migration executados externamente não acionam os callbacks de seed.
+
+A migration `AddStudySubjects` pressupõe que não há sessões anteriores a migrar. Ela substitui o texto livre por uma chave estrangeira obrigatória, sem assunto padrão, e impede excluir assuntos em uso.
+
 ## Produção
 
 ```sh

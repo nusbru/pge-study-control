@@ -13,8 +13,9 @@ using PgeStudy.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("Database")
-    ?? throw new InvalidOperationException("ConnectionStrings:Database não configurada.")));
+    ?? throw new InvalidOperationException("ConnectionStrings:Database não configurada.")).UseSubjectSeeding());
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IDashboardQuery, DashboardQuery>();
 builder.Services.AddScoped<StudySessions>();
 builder.Services.AddSingleton(TimeProvider.System);
@@ -103,6 +104,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthentication();
 app.MapStudySessions();
+app.MapGet("/api/subjects", async (ISubjectRepository subjects, CancellationToken cancellationToken) =>
+    TypedResults.Ok(await subjects.ListAsync(cancellationToken))).RequireAuthorization();
 app.MapGet("/api/dashboard", async (HttpContext context, IDashboardQuery query,
     string? period, string? today, string? questionType, CancellationToken cancellationToken) =>
     TypedResults.Ok(await query.GetAsync(context.UserId(), DashboardFilter.Parse(period, today, questionType), cancellationToken)))

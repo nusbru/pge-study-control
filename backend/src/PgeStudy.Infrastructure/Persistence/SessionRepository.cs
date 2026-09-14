@@ -7,11 +7,12 @@ namespace PgeStudy.Infrastructure.Persistence;
 public sealed class SessionRepository(AppDbContext db) : ISessionRepository
 {
     public Task<StudySession?> GetAsync(string userId, Guid id, CancellationToken cancellationToken) =>
-        db.StudySessions.SingleOrDefaultAsync(session => session.Id == id && session.UserId == userId, cancellationToken);
+        db.StudySessions.Include(session => session.Subject)
+            .SingleOrDefaultAsync(session => session.Id == id && session.UserId == userId, cancellationToken);
 
     public async Task<SessionPage> ListAsync(string userId, int page, CancellationToken cancellationToken)
     {
-        var query = db.StudySessions.AsNoTracking().Where(session => session.UserId == userId);
+        var query = db.StudySessions.AsNoTracking().Include(session => session.Subject).Where(session => session.UserId == userId);
         var count = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(count / 20d);
         if (page > totalPages) return new([], totalPages);

@@ -28,13 +28,20 @@ public sealed class StudySessionTests
     public void Percentage_Midpoint_RoundsLikeBrowser() => Assert.Equal(6.3m, QuestionCounts.Percentage(1, 16));
 
     [Fact]
-    public void Create_UnicodeSubject_NormalizesAndExpandsKey()
+    public void Create_RegisteredSubject_StoresReference()
     {
-        var session = StudySession.Create("owner", Values("\uFEFF  İ\tDireito  Civil \u00A0"), DateTime.UtcNow);
-        Assert.Equal("İ Direito Civil", session.Subject);
-        Assert.Equal("i\u0307 direito civil", session.SubjectKey);
-        var longSubject = StudySession.Create("owner", Values(new string('İ', 120)), DateTime.UtcNow);
-        Assert.Equal(240, longSubject.SubjectKey.Length);
+        var values = Values("1000 — Constitucionalismo");
+        var session = StudySession.Create("owner", values, DateTime.UtcNow);
+        Assert.Equal(values.Subject.Id, session.SubjectId);
+        Assert.Same(values.Subject, session.Subject);
+    }
+
+    [Fact]
+    public void Create_MissingSubject_Rejects()
+    {
+        var error = Assert.Throws<ValidationException>(() =>
+            StudySession.Create("owner", Values("Civil") with { Subject = null! }, DateTime.UtcNow));
+        Assert.Equal("subjectId", error.Field);
     }
 
     [Fact]
@@ -42,7 +49,7 @@ public sealed class StudySessionTests
     {
         var session = StudySession.Create("owner", Values("Civil"), DateTime.UtcNow);
         Assert.Throws<ValidationException>(() => session.Update(Values("Penal") with { WrongQuestionListUrl = "javascript:alert(1)" }, DateTime.UtcNow));
-        Assert.Equal("Civil", session.Subject);
+        Assert.Equal("Civil", session.Subject.Subject);
     }
 
     [Theory]
@@ -66,6 +73,6 @@ public sealed class StudySessionTests
         Assert.Throws<InvalidOperationException>(() => Performance.From(9_007_199_254_740_992, 0, 0));
     }
 
-    private static SessionValues Values(string subject) => new(new DateOnly(2026, 9, 9), subject,
+    private static SessionValues Values(string subject) => new(new DateOnly(2026, 9, 9), StudySubject.Create(Guid.NewGuid(), subject),
         QuestionTypes.Doctrine, 10, 7, null, null, null);
 }
