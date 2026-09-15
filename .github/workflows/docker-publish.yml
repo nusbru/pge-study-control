@@ -1,0 +1,85 @@
+name: Build and publish Docker image
+
+on:
+  workflow_call:
+    inputs:
+      image_version:
+        description: Shared version for all Docker images
+        required: true
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: Build and publish Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - image: pge-study-control
+            dockerfile: Dockerfile
+            target: runner
+          - image: pge-study-control-api
+            dockerfile: backend/Dockerfile
+            target: runner
+          - image: pge-study-control-migrations
+            dockerfile: backend/Dockerfile
+            target: migrator
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+
+      - name: Define image tags
+        id: image
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_VERSION: ${{ inputs.image_version }}
+        run: |
+          image="docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
+          {
+            echo "versioned=${image}:${IMAGE_VERSION}"
+            echo "latest=${image}:latest"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          load: true
+          push: false
+          tags: |
+            ${{ steps.image.outputs.versioned }}
+            ${{ steps.image.outputs.latest }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish Docker image
+        env:
+          VERSIONED_IMAGE: ${{ steps.image.outputs.versioned }}
+          LATEST_IMAGE: ${{ steps.image.outputs.latest }}
+        run: |
+          docker push "$VERSIONED_IMAGE"
+          docker push "$LATEST_IMAGE"

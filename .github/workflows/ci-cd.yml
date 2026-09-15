@@ -15,126 +15,53 @@ concurrency:
   queue: max
 
 jobs:
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    outputs:
-      image_version: ${{ steps.release.outputs.version }}
+  backend-tests:
+    name: Backend tests
+    uses: ./.github/workflows/backend-tests.yml
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
+  api-contract:
+    name: API contract
+    uses: ./.github/workflows/api-contract.yml
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
+  frontend-checks:
+    name: Frontend checks
+    uses: ./.github/workflows/frontend-checks.yml
 
-      - name: Install dependencies
-        run: npm ci
+  automated-tests:
+    name: Unit, operations, and security tests
+    uses: ./.github/workflows/automated-tests.yml
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          dotnet-version: '10.0.x'
+  e2e-tests:
+    name: End-to-end tests
+    uses: ./.github/workflows/e2e-tests.yml
 
-      - name: Build and test backend
-        run: dotnet test backend/PgeStudy.slnx --configuration Release
+  production-containers:
+    name: Production containers
+    uses: ./.github/workflows/production-containers.yml
 
-      - name: Check API contract
-        run: npm run api:types:check
+  local-containers:
+    name: Local containers
+    uses: ./.github/workflows/local-containers.yml
 
-      - name: Lint and typecheck frontend
-        run: npm run lint && npm run typecheck
-
-      - name: Install Playwright Chromium
-        run: npm run test:e2e:install
-
-      - name: Run unit, operations, and security tests
-        run: npm test
-
-      - name: Run end-to-end tests
-        run: npm run test:e2e
-
-      - name: Verify production containers and Identity key persistence
-        run: npm run test:production
-
-      - name: Verify local containers and browser hot reload
-        run: npm run test:local-containers
-
-      - name: Define shared image version
-        id: release
-        run: echo "version=v1.0.$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
+  image-version:
+    name: Shared image version
+    needs:
+      - backend-tests
+      - api-contract
+      - frontend-checks
+      - automated-tests
+      - e2e-tests
+      - production-containers
+      - local-containers
+    uses: ./.github/workflows/image-version.yml
 
   docker:
     name: Build and publish Docker image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        include:
-          - image: pge-study-control
-            dockerfile: Dockerfile
-            target: runner
-          - image: pge-study-control-api
-            dockerfile: backend/Dockerfile
-            target: runner
-          - image: pge-study-control-migrations
-            dockerfile: backend/Dockerfile
-            target: migrator
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
-
-      - name: Define image tags
-        id: image
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          IMAGE_NAME: ${{ matrix.image }}
-          IMAGE_VERSION: ${{ needs.test.outputs.image_version }}
-        run: |
-          image="docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
-          {
-            echo "versioned=${image}:${IMAGE_VERSION}"
-            echo "latest=${image}:latest"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build Docker image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
-          load: true
-          push: false
-          tags: |
-            ${{ steps.image.outputs.versioned }}
-            ${{ steps.image.outputs.latest }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Publish Docker image
-        env:
-          VERSIONED_IMAGE: ${{ steps.image.outputs.versioned }}
-          LATEST_IMAGE: ${{ steps.image.outputs.latest }}
-        run: |
-          docker push "$VERSIONED_IMAGE"
-          docker push "$LATEST_IMAGE"
+    needs: image-version
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      image_version: ${{ needs.image-version.outputs.image_version }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

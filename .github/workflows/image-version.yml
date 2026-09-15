@@ -1,0 +1,23 @@
+name: Shared image version
+
+on:
+  workflow_call:
+    outputs:
+      image_version:
+        description: Shared version for all Docker images
+        value: ${{ jobs.image-version.outputs.image_version }}
+
+permissions:
+  contents: read
+
+jobs:
+  image-version:
+    name: Define shared image version
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      image_version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Define shared image version
+        id: release
+        run: echo "version=v1.0.$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
