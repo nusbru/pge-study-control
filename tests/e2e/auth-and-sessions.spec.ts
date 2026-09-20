@@ -64,7 +64,7 @@ test("candidate registers, records, edits, and deletes a study session", async (
   await expect(page.getByRole("listitem").filter({ hasText: constituentPower.subject })).toContainText("30 (75,0%)");
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
-  const summary = page.getByRole("region", { name: "Período e resumo do desempenho" });
+  const summary = page.getByRole("region", { name: "Filtros e resumo do desempenho" });
   await expect(summary.getByText("Questões").locator("xpath=following-sibling::dd")).toHaveText("40");
   await expect(summary.getByText("Acertos", { exact: true }).locator("xpath=following-sibling::dd"))
     .toHaveText("30 75,0%");
@@ -248,7 +248,7 @@ test("dashboard filters sessions by question type and preserves the date window"
 
   await page.goto(`/dashboard?period=30d&today=${controlledToday}`);
   const typeFilters = page.getByRole("navigation", { name: "Filtrar tipo de questão" });
-  const summary = page.getByRole("region", { name: "Período e resumo do desempenho" });
+  const summary = page.getByRole("region", { name: "Filtros e resumo do desempenho" });
   const totalQuestions = summary.getByText("Questões").locator("xpath=following-sibling::dd");
 
   await typeFilters.getByRole("link", { name: "Jurisprudência" }).click();

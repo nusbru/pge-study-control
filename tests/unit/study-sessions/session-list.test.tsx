@@ -32,6 +32,26 @@ function session(overrides: Partial<StudySession>): StudySession {
 }
 
 describe("SessionList", () => {
+  it("preserves the subject on both pagination links", () => {
+    const subjectId = session({}).subjectId;
+    render(<SessionList sessions={[session({})]} page={2} totalPages={3} subjectId={subjectId} />);
+    expect(screen.getByRole("link", { name: "Página anterior" })).toHaveAttribute("href", `/sessions?page=1&subjectId=${subjectId}`);
+    expect(screen.getByRole("link", { name: "Próxima página" })).toHaveAttribute("href", `/sessions?page=3&subjectId=${subjectId}`);
+  });
+
+  it("explains empty filtered results and allows clearing the subject", () => {
+    render(<SessionList sessions={[]} page={1} totalPages={0} subjectId={session({}).subjectId} />);
+    expect(screen.getByRole("heading", { name: "Nenhuma sessão encontrada para este assunto" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Ver todos os assuntos" })).toHaveAttribute("href", "/sessions");
+    expect(screen.queryByText("Seu histórico começa com uma sessão")).not.toBeInTheDocument();
+  });
+
+  it("keeps the subject when returning from an out-of-range page", () => {
+    const subjectId = session({}).subjectId;
+    render(<SessionList sessions={[]} page={5} totalPages={1} subjectId={subjectId} />);
+    expect(screen.getByRole("link", { name: "Voltar ao início do histórico" })).toHaveAttribute("href", `/sessions?page=1&subjectId=${subjectId}`);
+  });
+
   it("formats whole and fractional percentages with one decimal in Brazilian Portuguese", () => {
     render(
       <SessionList

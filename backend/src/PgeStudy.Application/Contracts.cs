@@ -37,9 +37,9 @@ public sealed record SubjectPerformance(string Subject, Guid SubjectId, long Tot
     long CorrectAnswers, long WrongAnswers, decimal CorrectPercentage, decimal WrongPercentage);
 public sealed record DashboardResponse(Performance Overall, IReadOnlyList<SubjectPerformance> Subjects);
 
-public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? QuestionType)
+public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? QuestionType, Guid? SubjectId = null)
 {
-    public static DashboardFilter Parse(string? period, string? today, string? questionType)
+    public static DashboardFilter Parse(string? period, string? today, string? questionType, Guid? subjectId = null)
     {
         if (!DateOnly.TryParseExact(today, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None, out var date))
@@ -56,6 +56,6 @@ public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? Qu
             "unspecified" => QuestionTypes.Unspecified,
             _ => null
         };
-        return new(date, start, type);
+        return new(date, start, type, subjectId);
     }
 }

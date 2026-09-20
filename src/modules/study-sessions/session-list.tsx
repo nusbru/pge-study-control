@@ -13,6 +13,7 @@ type SessionListProps = {
   sessions: StudySession[];
   page: number;
   totalPages: number;
+  subjectId?: string;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
@@ -44,8 +45,22 @@ function DeleteSessionForm({ session }: Readonly<{ session: StudySession }>) {
   );
 }
 
-export function SessionList({ sessions, page, totalPages }: Readonly<SessionListProps>) {
+export function SessionList({ sessions, page, totalPages, subjectId }: Readonly<SessionListProps>) {
+  const pageHref = (number: number) => {
+    const params = new URLSearchParams({ page: String(number) });
+    if (subjectId) params.set("subjectId", subjectId);
+    return `/sessions?${params}`;
+  };
   if (totalPages === 0) {
+    if (subjectId) {
+      return (
+        <section className={styles.empty} aria-labelledby="empty-title">
+          <h2 id="empty-title">Nenhuma sessão encontrada para este assunto</h2>
+          <p>Selecione outro assunto ou consulte todo o histórico.</p>
+          <Link href="/sessions">Ver todos os assuntos</Link>
+        </section>
+      );
+    }
     return (
       <section className={styles.empty} aria-labelledby="empty-title">
         <h2 id="empty-title">Seu histórico começa com uma sessão</h2>
@@ -60,7 +75,7 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
       {sessions.length === 0 ? (
         <section className={styles.missingPage} aria-labelledby="missing-page-title">
           <h2 id="missing-page-title">Esta página não tem sessões</h2>
-          <Link href="/sessions">Voltar ao início do histórico</Link>
+          <Link href={subjectId ? pageHref(1) : "/sessions"}>Voltar ao início do histórico</Link>
         </section>
       ) : (
         <ol className={styles.list}>
@@ -116,9 +131,9 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
 
       {totalPages > 1 && (
         <nav className={styles.pagination} aria-label="Paginação do histórico">
-          {page > 1 ? <Link href={`/sessions?page=${page - 1}`}>Página anterior</Link> : <span />}
+          {page > 1 ? <Link href={pageHref(page - 1)}>Página anterior</Link> : <span />}
           <span>Página {page} de {totalPages}</span>
-          {page < totalPages ? <Link href={`/sessions?page=${page + 1}`}>Próxima página</Link> : <span />}
+          {page < totalPages ? <Link href={pageHref(page + 1)}>Próxima página</Link> : <span />}
         </nav>
       )}
     </>

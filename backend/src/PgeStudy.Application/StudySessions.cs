@@ -5,7 +5,7 @@ namespace PgeStudy.Application;
 public interface ISessionRepository
 {
     Task<StudySession?> GetAsync(string userId, Guid id, CancellationToken cancellationToken);
-    Task<SessionPage> ListAsync(string userId, int page, CancellationToken cancellationToken);
+    Task<SessionPage> ListAsync(string userId, int page, Guid? subjectId, CancellationToken cancellationToken);
     Task AddAsync(StudySession session, CancellationToken cancellationToken);
     Task SaveAsync(CancellationToken cancellationToken);
     Task<bool> DeleteAsync(string userId, Guid id, CancellationToken cancellationToken);

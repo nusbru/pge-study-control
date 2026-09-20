@@ -177,6 +177,49 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
+    public async Task Dashboard_SubjectPeriodAndType_IntersectBeforeAggregation()
+    {
+        using var owner = await Login();
+        using var other = await Login();
+        await Create(owner, Session() with { TotalQuestions = 10, CorrectAnswers = 9 });
+        await Create(owner, Session() with { StudyDate = new DateOnly(2026, 9, 3), TotalQuestions = 100, CorrectAnswers = 10 });
+        await Create(owner, Session() with { SubjectId = ConstituentPower });
+        await Create(owner, Session() with { QuestionType = "JURISPRUDENCE" });
+        await Create(owner, Session() with { StudyDate = new DateOnly(2026, 9, 2) });
+        await Create(owner, Session() with { StudyDate = new DateOnly(2026, 9, 10) });
+        await Create(other, Session());
+
+        var filtered = await owner.GetFromJsonAsync<DashboardResponse>(
+            $"/api/dashboard?period=7d&today=2026-09-09&questionType=doctrine&subjectId={Constitutionalism}");
+        Assert.Equal(110, filtered!.Overall.TotalQuestions);
+        Assert.Equal(19, filtered.Overall.CorrectAnswers);
+        Assert.Equal(91, filtered.Overall.WrongAnswers);
+        Assert.Equal(17.3m, filtered.Overall.CorrectPercentage);
+        Assert.Equal(Constitutionalism, Assert.Single(filtered.Subjects).SubjectId);
+
+        var allTypes = await owner.GetFromJsonAsync<DashboardResponse>(
+            $"/api/dashboard?period=7d&today=2026-09-09&subjectId={Constitutionalism}");
+        Assert.Equal(120, allTypes!.Overall.TotalQuestions);
+        var allPeriods = await owner.GetFromJsonAsync<DashboardResponse>(
+            $"/api/dashboard?period=all&today=2026-09-09&questionType=doctrine&subjectId={Constitutionalism}");
+        Assert.Equal(120, allPeriods!.Overall.TotalQuestions);
+        var empty = await owner.GetFromJsonAsync<DashboardResponse>(
+            $"/api/dashboard?period=7d&today=2026-09-09&questionType=jurisprudence&subjectId={ConstituentPower}");
+        Assert.Equal(0, empty!.Overall.TotalQuestions);
+        Assert.Null(empty.Overall.CorrectPercentage);
+        Assert.Empty(empty.Subjects);
+    }
+
+    [Theory]
+    [InlineData("/api/dashboard?period=7d&today=2026-09-09&subjectId=invalid")]
+    [InlineData("/api/sessions?subjectId=invalid")]
+    public async Task SubjectFilter_MalformedId_ReturnsBadRequest(string url)
+    {
+        using var browser = await Login();
+        Assert.Equal(HttpStatusCode.BadRequest, (await browser.GetAsync(url)).StatusCode);
+    }
+
+    [Fact]
     public async Task Sessions_ValidationAndPagination_EnforceContract()
     {
         using var browser = await Login();
@@ -196,6 +239,22 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         Assert.Single(second!.Records);
         Assert.True(first.Records[0].StudyDate > second.Records[0].StudyDate);
         Assert.Empty((await browser.GetFromJsonAsync<SessionPage>("/api/sessions?page=2147483647"))!.Records);
+
+        await Create(browser, Session() with { SubjectId = ConstituentPower });
+        using var other = await Login();
+        await Create(other, Session());
+        var filteredFirst = await browser.GetFromJsonAsync<SessionPage>($"/api/sessions?page=1&subjectId={Constitutionalism}");
+        Assert.Equal(20, filteredFirst!.Records.Count);
+        Assert.Equal(2, filteredFirst.TotalPages);
+        Assert.Equal(first.Records.Select(session => session.Id), filteredFirst.Records.Select(session => session.Id));
+        var filteredSecond = await browser.GetFromJsonAsync<SessionPage>($"/api/sessions?page=2&subjectId={Constitutionalism}");
+        Assert.Equal(second.Records.Single().Id, Assert.Single(filteredSecond!.Records).Id);
+        var single = await browser.GetFromJsonAsync<SessionPage>($"/api/sessions?subjectId={ConstituentPower}");
+        Assert.Equal(1, single!.TotalPages);
+        Assert.Equal(ConstituentPower, Assert.Single(single.Records).SubjectId);
+        var empty = await browser.GetFromJsonAsync<SessionPage>($"/api/sessions?subjectId={Guid.NewGuid()}");
+        Assert.Equal(0, empty!.TotalPages);
+        Assert.Empty(empty.Records);
     }
 
     [Fact]
