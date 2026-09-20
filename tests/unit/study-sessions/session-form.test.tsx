@@ -37,27 +37,32 @@ describe("SessionForm", () => {
       defaultValues={{ subjectId: constituentPower.id }} />);
     expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveValue(constituentPower.id);
     expect(screen.getByRole("option", { name: constituentPower.subject })).toHaveProperty("selected", true);
-    expect(screen.getByText("Grupo 10")).toBeVisible();
-    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveAccessibleDescription("Grupo 10");
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveStyle({ color: "#3f4b7b" });
+    expect(screen.getByRole("combobox", { name: "Assunto" })).not.toHaveAccessibleDescription();
   });
 
-  it("updates the group marker with the selected subject and clears it with the selection", async () => {
+  it("colors the subject field by prefix without adding a group label", async () => {
     const user = userEvent.setup();
     renderForm();
     const select = screen.getByRole("combobox", { name: "Assunto" });
     expect(screen.queryByText(/^Grupo /)).not.toBeInTheDocument();
+    expect(select.style.color).toBe("");
 
     await user.selectOptions(select, constitutionalism.id);
-    const color = screen.getByText("Grupo 10").style.color;
+    const color = select.style.color;
+    expect(color).not.toBe("");
     await user.selectOptions(select, constituentPower.id);
-    expect(screen.getByText("Grupo 10").style.color).toBe(color);
+    expect(select.style.color).toBe(color);
 
     await user.selectOptions(select, environmentalLaw.id);
-    expect(screen.getByText("Grupo 70").style.color).not.toBe(color);
-    expect(select).toHaveAccessibleDescription("Grupo 70");
+    expect(select.style.color).not.toBe(color);
+    expect(screen.queryByText(/^Grupo /)).not.toBeInTheDocument();
+    expect(select).not.toHaveAccessibleDescription();
 
     await user.selectOptions(select, "");
     expect(screen.queryByText(/^Grupo /)).not.toBeInTheDocument();
+    expect(select.style.color).toBe("");
+    expect(select.style.backgroundColor).toBe("");
     expect(select).not.toHaveAccessibleDescription();
   });
 
@@ -202,7 +207,7 @@ describe("SessionForm", () => {
     );
     expect(screen.getByLabelText("Data do estudo")).toHaveValue("2026-08-20");
     expect(screen.getByLabelText("Assunto")).toHaveValue(constituentPower.id);
-    expect(screen.getByLabelText("Assunto")).toHaveAccessibleDescription("Selecione um assunto cadastrado. Grupo 10");
+    expect(screen.getByLabelText("Assunto")).toHaveAccessibleDescription("Selecione um assunto cadastrado.");
     expect(screen.getByLabelText("Assunto")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Total de questões")).toHaveValue(80);
     expect(screen.getByLabelText("Acertos")).toHaveValue(50);

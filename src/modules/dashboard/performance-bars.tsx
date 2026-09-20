@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { formatPercentage } from "@/modules/study-sessions/domain";
-import { SubjectGroupBadge } from "@/modules/subjects/subject-group-badge";
+import { getSubjectGroup } from "@/modules/subjects/group";
 import type { DashboardData } from "./queries";
 import styles from "./dashboard.module.css";
 
@@ -21,7 +21,7 @@ export function PerformanceBars({ data }: Readonly<{ data: DashboardData }>) {
       <header className={styles.performanceHeader}>
         <div>
           <h2 id="performance-title">Desempenho por assunto</h2>
-          <p>Assuntos com mais questões aparecem primeiro. As cores identificam os grupos pelos dois primeiros dígitos do código.</p>
+          <p>Assuntos com mais questões aparecem primeiro.</p>
         </div>
         <div className={styles.legend} aria-label="Legenda">
           <span><i className={styles.correctKey} aria-hidden="true" />Acertos</span>
@@ -39,8 +39,7 @@ export function PerformanceBars({ data }: Readonly<{ data: DashboardData }>) {
           return (
             <li className={styles.subject} key={subject.subjectId}>
               <div className={styles.subjectHeading}>
-                <div><SubjectGroupBadge subject={subject.subject} /></div>
-                <h3>{subject.subject}</h3>
+                <h3 style={{ color: getSubjectGroup(subject.subject).color }}>{subject.subject}</h3>
                 <span>{subject.totalQuestions} {questionLabel}</span>
               </div>
               <dl className={styles.subjectCounts}>

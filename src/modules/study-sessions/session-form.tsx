@@ -5,7 +5,7 @@ import { startTransition, useActionState, useEffect, useState, type FormEvent } 
 import { formatPercentage, percentage, resolveQuestionCounts } from "./domain";
 import type { SessionActionState } from "./actions";
 import type { SubjectResponse } from "@/lib/api/contracts";
-import { SubjectGroupBadge } from "@/modules/subjects/subject-group-badge";
+import { getSubjectGroup } from "@/modules/subjects/group";
 import { editableQuestionTypes, isEditableQuestionType, questionTypeLabels } from "./question-type";
 import styles from "./session-form.module.css";
 
@@ -94,6 +94,7 @@ export function SessionForm({
     ? null
     : calculation.field;
   const selectedSubject = subjects.find((subject) => subject.id === values.subjectId);
+  const selectedSubjectGroup = selectedSubject ? getSubjectGroup(selectedSubject.subject) : null;
 
   useEffect(() => {
     if (defaultStudyDate || defaultValues?.studyDate) return;
@@ -210,18 +211,19 @@ export function SessionForm({
             required
             disabled={subjects.length === 0}
             value={values.subjectId}
+            style={{ color: selectedSubjectGroup?.color, backgroundColor: selectedSubjectGroup?.backgroundColor }}
             aria-invalid={fieldError("subjectId") ? true : undefined}
-            aria-describedby={[describedBy("subjectId"), subjects.length === 0 ? "subjectId-empty" : null, selectedSubject ? "subjectId-group" : null].filter(Boolean).join(" ") || undefined}
+            aria-describedby={[describedBy("subjectId"), subjects.length === 0 ? "subjectId-empty" : null].filter(Boolean).join(" ") || undefined}
             onChange={(event) => setValues({ ...values, subjectId: event.target.value })}
           >
-            <option value="">Selecione um assunto</option>
+            <option value="" style={{ color: "var(--ink)", backgroundColor: "var(--surface)" }}>Selecione um assunto</option>
             {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>{subject.subject}</option>
+              <option key={subject.id} value={subject.id}
+                style={{ color: getSubjectGroup(subject.subject).color, backgroundColor: "var(--surface)" }}>
+                {subject.subject}
+              </option>
             ))}
           </select>
-          <div id="subjectId-group" role="status">
-            {selectedSubject && <SubjectGroupBadge subject={selectedSubject.subject} />}
-          </div>
           {subjects.length === 0 && <p className={styles.fieldError} id="subjectId-empty">Nenhum assunto disponível. Solicite o cadastro dos assuntos antes de registrar uma sessão.</p>}
           {fieldError("subjectId") && <p className={styles.fieldError} id="subjectId-error">{fieldError("subjectId")}</p>}
         </div>

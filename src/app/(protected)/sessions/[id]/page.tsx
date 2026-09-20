@@ -4,7 +4,7 @@ import { requireUserId } from "@/lib/auth-user";
 import { formatPercentage, percentage } from "@/modules/study-sessions/domain";
 import { questionTypeLabels } from "@/modules/study-sessions/question-type";
 import { getSession } from "@/modules/study-sessions/repository";
-import { SubjectGroupBadge } from "@/modules/subjects/subject-group-badge";
+import { getSubjectGroup } from "@/modules/subjects/group";
 import styles from "./session-details.module.css";
 
 type SessionDetailsPageProps = {
@@ -49,8 +49,7 @@ export default async function SessionDetailsPage({ params }: SessionDetailsPageP
               {questionTypeLabels[session.questionType]}
             </span>
           </div>
-          <div><SubjectGroupBadge subject={session.subject} /></div>
-          <h2 id="session-subject">{session.subject}</h2>
+          <h2 id="session-subject" style={{ color: getSubjectGroup(session.subject).color }}>{session.subject}</h2>
         </div>
 
         <dl className={styles.counts}>

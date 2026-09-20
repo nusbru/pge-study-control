@@ -109,9 +109,9 @@ A paleta combina neutros quase acromáticos com dois sinais funcionais: Coral de
 
 ### Subject groups
 
-Marcadores de assunto usam uma paleta categórica própria, restrita ao rótulo `Grupo XX`. O grupo é determinado pelos dois primeiros dígitos do código no início do nome; a cor permanece fixa entre telas e filtros. Os grupos 10, 20, 30, 40, 50, 60 e 70 usam, respectivamente, índigo, roxo, verde-azulado, ocre, ameixa, oliva e verde, sobre fundos suaves. Novos prefixos recebem cores determinísticas; assuntos sem código válido usam um marcador neutro `Sem grupo`.
+Os assuntos usam uma paleta categórica aplicada diretamente ao nome e ao campo de seleção existentes, sem componente adicional, marcadores ou textos de classificação. O grupo é determinado pelos dois primeiros dígitos do código no início do nome; a cor permanece fixa entre telas e filtros. Os prefixos 10, 20, 30, 40, 50, 60 e 70 usam, respectivamente, índigo, roxo, verde-azulado, ocre, ameixa, oliva e verde. Novos prefixos recebem cores determinísticas; assuntos sem código válido usam uma cor neutra.
 
-O número do grupo sempre acompanha a cor. Esses marcadores aparecem no dashboard, histórico, detalhes e assunto selecionado nos formulários. As barras e contagens de acertos e erros mantêm suas cores semânticas.
+O código original permanece junto ao nome do assunto. A cor aparece no dashboard, histórico, detalhes e seleção dos formulários; o campo selecionado também recebe um fundo suave. As barras e contagens de acertos e erros mantêm suas cores semânticas.
 
 ## 3. Typography
 
