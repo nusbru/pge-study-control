@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SessionForm } from "@/modules/study-sessions/session-form";
 import type { SessionActionState } from "@/modules/study-sessions/actions";
-import { constitutionalism, constituentPower, subjects } from "../../subjects";
+import { constitutionalism, constituentPower, environmentalLaw, subjects } from "../../subjects";
 
 afterEach(cleanup);
 
@@ -37,6 +37,28 @@ describe("SessionForm", () => {
       defaultValues={{ subjectId: constituentPower.id }} />);
     expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveValue(constituentPower.id);
     expect(screen.getByRole("option", { name: constituentPower.subject })).toHaveProperty("selected", true);
+    expect(screen.getByText("Grupo 10")).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveAccessibleDescription("Grupo 10");
+  });
+
+  it("updates the group marker with the selected subject and clears it with the selection", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const select = screen.getByRole("combobox", { name: "Assunto" });
+    expect(screen.queryByText(/^Grupo /)).not.toBeInTheDocument();
+
+    await user.selectOptions(select, constitutionalism.id);
+    const color = screen.getByText("Grupo 10").style.color;
+    await user.selectOptions(select, constituentPower.id);
+    expect(screen.getByText("Grupo 10").style.color).toBe(color);
+
+    await user.selectOptions(select, environmentalLaw.id);
+    expect(screen.getByText("Grupo 70").style.color).not.toBe(color);
+    expect(select).toHaveAccessibleDescription("Grupo 70");
+
+    await user.selectOptions(select, "");
+    expect(screen.queryByText(/^Grupo /)).not.toBeInTheDocument();
+    expect(select).not.toHaveAccessibleDescription();
   });
 
   it("explains an empty catalog and prevents saving", () => {
@@ -180,7 +202,7 @@ describe("SessionForm", () => {
     );
     expect(screen.getByLabelText("Data do estudo")).toHaveValue("2026-08-20");
     expect(screen.getByLabelText("Assunto")).toHaveValue(constituentPower.id);
-    expect(screen.getByLabelText("Assunto")).toHaveAccessibleDescription("Selecione um assunto cadastrado.");
+    expect(screen.getByLabelText("Assunto")).toHaveAccessibleDescription("Selecione um assunto cadastrado. Grupo 10");
     expect(screen.getByLabelText("Assunto")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Total de questões")).toHaveValue(80);
     expect(screen.getByLabelText("Acertos")).toHaveValue(50);
