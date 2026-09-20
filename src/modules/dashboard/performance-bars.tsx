@@ -5,12 +5,12 @@ import { getSubjectGroup } from "@/modules/subjects/group";
 import type { DashboardData } from "./queries";
 import styles from "./dashboard.module.css";
 
-export function PerformanceBars({ data }: Readonly<{ data: DashboardData }>) {
+export function PerformanceBars({ data, filtered = false }: Readonly<{ data: DashboardData; filtered?: boolean }>) {
   if (data.subjects.length === 0) {
     return (
       <section className={styles.empty} aria-labelledby="dashboard-empty-title">
-        <h2 id="dashboard-empty-title">Ainda não há desempenho neste período</h2>
-        <p>Registre uma sessão com questões para começar a comparar acertos e erros por assunto.</p>
+        <h2 id="dashboard-empty-title">{filtered ? "Nenhuma sessão encontrada para os filtros selecionados" : "Ainda não há desempenho neste período"}</h2>
+        <p>{filtered ? "Ajuste o assunto, o período ou o tipo de questão para consultar outras sessões." : "Registre uma sessão com questões para começar a comparar acertos e erros por assunto."}</p>
         <Link href="/sessions/new">Registrar uma sessão</Link>
       </section>
     );

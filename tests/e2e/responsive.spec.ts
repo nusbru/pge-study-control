@@ -106,6 +106,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
     await test.step(`${viewport.name} history`, async () => {
       await expect(page.getByRole("heading", { name: "Sessões de estudo" })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} history`);
+      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto" }), `${viewport.name} history subject filter`);
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("link", { name: "Sessões", exact: true }),
@@ -143,6 +144,7 @@ test("core pages remain responsive and accessible", async ({ page }) => {
         name: `${environmentalLaw.subject}: 60,0% de acertos e 40,0% de erros em 10 questões`,
       })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} dashboard`);
+      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto" }), `${viewport.name} dashboard subject filter`);
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("link", { name: "30 dias", exact: true }),

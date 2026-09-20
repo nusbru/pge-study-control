@@ -14,6 +14,7 @@ public sealed class DashboardQuery(AppDbContext db) : IDashboardQuery
                 WHERE user_id = {userId} AND study_date <= {filter.Today}
                   AND ({filter.Start}::date IS NULL OR study_date >= {filter.Start})
                   AND ({filter.QuestionType}::text IS NULL OR question_type = {filter.QuestionType})
+                  AND ({filter.SubjectId}::uuid IS NULL OR subject_id = {filter.SubjectId})
             ), subjects AS (
                 SELECT f.subject_id, s.subject, SUM(f.total_questions) AS total,
                        SUM(f.correct_answers) AS correct, SUM(f.wrong_answers) AS wrong

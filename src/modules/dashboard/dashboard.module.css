@@ -54,6 +54,11 @@
   gap: 1rem 2rem;
 }
 
+.filterStack {
+  flex: 1;
+  min-width: 0;
+}
+
 .filterGroup {
   display: flex;
   align-items: center;
@@ -349,6 +354,10 @@
     width: 100%;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .filterStack {
+    width: 100%;
   }
 
   .filters {

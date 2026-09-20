@@ -15,7 +15,9 @@ export async function getSession(id: string) {
   }
 }
 
-export async function listSessions(page: number) {
-  const result = await serverApi<SessionPage>(`/api/sessions?page=${page}`);
+export async function listSessions(page: number, subjectId?: string) {
+  const params = new URLSearchParams({ page: String(page) });
+  if (subjectId) params.set("subjectId", subjectId);
+  const result = await serverApi<SessionPage>(`/api/sessions?${params}`);
   return { records: result.records.map(sessionViewModel), totalPages: result.totalPages };
 }

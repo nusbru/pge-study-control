@@ -10,9 +10,10 @@ public sealed class SessionRepository(AppDbContext db) : ISessionRepository
         db.StudySessions.Include(session => session.Subject)
             .SingleOrDefaultAsync(session => session.Id == id && session.UserId == userId, cancellationToken);
 
-    public async Task<SessionPage> ListAsync(string userId, int page, CancellationToken cancellationToken)
+    public async Task<SessionPage> ListAsync(string userId, int page, Guid? subjectId, CancellationToken cancellationToken)
     {
         var query = db.StudySessions.AsNoTracking().Include(session => session.Subject).Where(session => session.UserId == userId);
+        if (subjectId.HasValue) query = query.Where(session => session.SubjectId == subjectId.Value);
         var count = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(count / 20d);
         if (page > totalPages) return new([], totalPages);

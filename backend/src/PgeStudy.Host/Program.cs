@@ -111,8 +111,8 @@ app.MapMockExams();
 app.MapGet("/api/subjects", async (ISubjectRepository subjects, CancellationToken cancellationToken) =>
     TypedResults.Ok(await subjects.ListAsync(cancellationToken))).RequireAuthorization();
 app.MapGet("/api/dashboard", async (HttpContext context, IDashboardQuery query,
-    string? period, string? today, string? questionType, CancellationToken cancellationToken) =>
-    TypedResults.Ok(await query.GetAsync(context.UserId(), DashboardFilter.Parse(period, today, questionType), cancellationToken)))
+    string? period, string? today, string? questionType, Guid? subjectId, CancellationToken cancellationToken) =>
+    TypedResults.Ok(await query.GetAsync(context.UserId(), DashboardFilter.Parse(period, today, questionType, subjectId), cancellationToken)))
     .RequireAuthorization();
 app.MapGet("/api/health", async (AppDbContext db, CancellationToken cancellationToken) =>
     await db.Database.CanConnectAsync(cancellationToken)

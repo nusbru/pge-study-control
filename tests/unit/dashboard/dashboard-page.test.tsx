@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/(protected)/dashboard/page";
 import { QuestionType } from "@/lib/api/contracts";
 import type { DashboardData } from "@/modules/dashboard/queries";
+import { constitutionalism, subjects } from "../../subjects";
 
 const dashboard: DashboardData = {
   overall: {
@@ -33,6 +34,8 @@ vi.mock("@/lib/auth-user", () => ({
 vi.mock("@/modules/dashboard/queries", () => ({
   getDashboard: mocks.getDashboard,
 }));
+
+vi.mock("@/modules/study-sessions/repository", () => ({ listSubjects: async () => subjects }));
 
 vi.mock("@/modules/mock-exams/queries", () => ({ getMockExamPerformance: mocks.getMockExamPerformance }));
 
@@ -88,7 +91,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Erros").nextElementSibling).toHaveTextContent("0");
     expect(screen.queryByText("0,0%")).not.toBeInTheDocument();
     expect(screen.getByText("Aproveitamento").nextElementSibling).toHaveTextContent(
-      "Não disponível Sem questões no período",
+      "Não disponível Sem questões nos filtros selecionados",
     );
   });
 
@@ -107,6 +110,7 @@ describe("DashboardPage", () => {
       "30d",
       "2026-08-24",
       QuestionType.DOCTRINE,
+      undefined,
     );
     expect(mocks.getMockExamPerformance).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "Desempenho nos simulados" })).not.toBeInTheDocument();
@@ -136,7 +140,7 @@ describe("DashboardPage", () => {
 
     render(page);
 
-    expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all");
+    expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all", undefined);
     expect(screen.getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -226,7 +230,7 @@ describe("DashboardPage", () => {
     await DashboardPage({ searchParams: Promise.resolve({ period, today }) });
 
     expect(mocks.getDashboard).toHaveBeenCalledOnce();
-    expect(mocks.getDashboard).toHaveBeenCalledWith(period, today, "all");
+    expect(mocks.getDashboard).toHaveBeenCalledWith(period, today, "all", undefined);
   });
 
   it("propagates a dashboard query failure for a valid window", async () => {
@@ -236,5 +240,30 @@ describe("DashboardPage", () => {
     await expect(DashboardPage({
       searchParams: Promise.resolve({ period: "7d", today: "2026-08-24" }),
     })).rejects.toBe(databaseError);
+  });
+
+  it("combines the subject with the period and type and retains it in navigation", async () => {
+    render(await DashboardPage({ searchParams: Promise.resolve({
+      period: "7d", today: "2026-08-24", questionType: "doctrine", subjectId: constitutionalism.id,
+    }) }));
+
+    expect(mocks.getDashboard).toHaveBeenCalledWith("7d", "2026-08-24", QuestionType.DOCTRINE, constitutionalism.id);
+    expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveValue(constitutionalism.id);
+    for (const name of ["90 dias", "Lei Seca", "Simulados"]) {
+      const href = screen.getByRole("link", { name }).getAttribute("href")!;
+      expect(new URL(href, "https://example.com").searchParams.get("subjectId")).toBe(constitutionalism.id);
+    }
+    expect(screen.getByRole("heading", { name: "Nenhuma sessão encontrada para os filtros selecionados" })).toBeVisible();
+  });
+
+  it("retains the subject in the mock exam tab without filtering mock exams", async () => {
+    render(await DashboardPage({ searchParams: Promise.resolve({
+      tab: "simulados", period: "7d", today: "2026-08-24", subjectId: constitutionalism.id,
+    }) }));
+    expect(mocks.getDashboard).not.toHaveBeenCalled();
+    expect(mocks.getMockExamPerformance).toHaveBeenCalledWith("7d", "2026-08-24");
+    expect(screen.queryByRole("combobox", { name: "Assunto" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sessões de estudo" })).toHaveAttribute("href",
+      `/dashboard?period=7d&today=2026-08-24&questionType=all&subjectId=${constitutionalism.id}`);
   });
 });

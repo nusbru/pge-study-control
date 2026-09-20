@@ -23,6 +23,17 @@ afterEach(() => {
 });
 
 describe("LocalTodayRedirect", () => {
+  it("preserves the subject while resolving the local date", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    process.env.TZ = "UTC";
+    const subjectId = "98287845-45f8-46db-9d4c-4d4139ded7b1";
+    render(<LocalTodayRedirect period="7d" questionType={QuestionType.DOCTRINE} subjectId={subjectId} />);
+    expect(mocks.replace).toHaveBeenCalledWith(
+      `/dashboard?period=7d&today=2026-08-24&questionType=doctrine&subjectId=${subjectId}`, { scroll: false },
+    );
+  });
+
   it("preserves the selected mock exam tab when correcting a stale date", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));

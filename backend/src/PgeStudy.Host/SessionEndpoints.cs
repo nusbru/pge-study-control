@@ -8,9 +8,9 @@ public static class SessionEndpoints
     public static void MapStudySessions(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/sessions").RequireAuthorization().ValidateCsrf();
-        group.MapGet("/", async (HttpContext context, ISessionRepository repository, string? page, CancellationToken cancellationToken) =>
+        group.MapGet("/", async (HttpContext context, ISessionRepository repository, string? page, Guid? subjectId, CancellationToken cancellationToken) =>
             TypedResults.Ok(await repository.ListAsync(context.UserId(),
-                int.TryParse(page, out var number) && number > 0 ? number : 1, cancellationToken)));
+                int.TryParse(page, out var number) && number > 0 ? number : 1, subjectId, cancellationToken)));
         group.MapGet("/{id:guid}", async Task<Results<Ok<SessionResponse>, NotFound>>
             (Guid id, HttpContext context, ISessionRepository repository, CancellationToken cancellationToken) =>
         {

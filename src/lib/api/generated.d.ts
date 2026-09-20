@@ -188,6 +188,7 @@ export interface paths {
             parameters: {
                 query?: {
                     page?: string;
+                    subjectId?: string;
                 };
                 header?: never;
                 path?: never;
@@ -675,6 +676,7 @@ export interface paths {
                     period?: string;
                     today?: string;
                     questionType?: string;
+                    subjectId?: string;
                 };
                 header?: never;
                 path?: never;
