@@ -3,6 +3,7 @@
 import type { StudySession } from "@/lib/api/contracts";
 import Link from "next/link";
 import { useActionState } from "react";
+import { SubjectGroupBadge } from "@/modules/subjects/subject-group-badge";
 import { deleteSessionAction, type SessionActionState } from "./actions";
 import { formatPercentage, percentage } from "./domain";
 import { questionTypeLabels } from "./question-type";
@@ -72,6 +73,7 @@ export function SessionList({ sessions, page, totalPages }: Readonly<SessionList
                 <span className={styles.questionType}>
                   {questionTypeLabels[session.questionType]}
                 </span>
+                <div><SubjectGroupBadge subject={session.subject} /></div>
                 <h2>{session.subject}</h2>
               </div>
 

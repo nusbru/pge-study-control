@@ -107,6 +107,12 @@ A paleta combina neutros quase acromáticos com dois sinais funcionais: Coral de
 
 **The Quiet Canvas Rule.** Neutros ocupam a maior parte da superfície. Cores saturadas não podem competir com os dados.
 
+### Subject groups
+
+Marcadores de assunto usam uma paleta categórica própria, restrita ao rótulo `Grupo XX`. O grupo é determinado pelos dois primeiros dígitos do código no início do nome; a cor permanece fixa entre telas e filtros. Os grupos 10, 20, 30, 40, 50, 60 e 70 usam, respectivamente, índigo, roxo, verde-azulado, ocre, ameixa, oliva e verde, sobre fundos suaves. Novos prefixos recebem cores determinísticas; assuntos sem código válido usam um marcador neutro `Sem grupo`.
+
+O número do grupo sempre acompanha a cor. Esses marcadores aparecem no dashboard, histórico, detalhes e assunto selecionado nos formulários. As barras e contagens de acertos e erros mantêm suas cores semânticas.
+
 ## 3. Typography
 
 **Display Font:** Georgia, com Times New Roman como fallback.
