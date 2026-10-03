@@ -677,6 +677,7 @@ export interface paths {
                     today?: string;
                     questionType?: string;
                     subjectId?: string;
+                    subjectGroup?: string;
                 };
                 header?: never;
                 path?: never;

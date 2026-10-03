@@ -59,6 +59,61 @@
   min-width: 0;
 }
 
+.detailedSearch {
+  margin-top: 0.75rem;
+}
+
+.detailedSearch summary {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding-block: 0.7rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 750;
+}
+
+.detailedSearch summary:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.detailedSearch summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
+}
+
+.activeFilters {
+  display: inline-block;
+  margin-left: 0.75rem;
+  font-weight: 400;
+}
+
+.filterHelp {
+  margin: 0.5rem 0;
+  max-width: 65ch;
+  font-size: 0.875rem;
+}
+
+.detailedFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.detailedFields > div:first-of-type {
+  flex: 1 1 12rem;
+  max-width: 18rem;
+}
+
+.detailedFields > div:last-of-type {
+  flex: 2 1 20rem;
+}
+
 .filterGroup {
   display: flex;
   align-items: center;

@@ -73,6 +73,27 @@ public sealed class StudySessionTests
         Assert.Throws<InvalidOperationException>(() => Performance.From(9_007_199_254_740_992, 0, 0));
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("10", "10")]
+    [InlineData("01", "01")]
+    public void Parse_SubjectGroup_PreservesTwoDigitCode(string? value, string? expected) =>
+        Assert.Equal(expected, DashboardFilter.Parse("7d", "2026-09-09", "all", subjectGroup: value).SubjectGroup);
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("100")]
+    [InlineData("ab")]
+    [InlineData(" 10")]
+    [InlineData("١٠")]
+    public void Parse_InvalidSubjectGroup_Rejects(string value)
+    {
+        var error = Assert.Throws<ValidationException>(() =>
+            DashboardFilter.Parse("7d", "2026-09-09", "all", subjectGroup: value));
+        Assert.Equal("subjectGroup", error.Field);
+    }
+
     private static SessionValues Values(string subject) => new(new DateOnly(2026, 9, 9), StudySubject.Create(Guid.NewGuid(), subject),
         QuestionTypes.Doctrine, 10, 7, null, null, null);
 }

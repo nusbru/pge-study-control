@@ -37,10 +37,15 @@ public sealed record SubjectPerformance(string Subject, Guid SubjectId, long Tot
     long CorrectAnswers, long WrongAnswers, decimal CorrectPercentage, decimal WrongPercentage);
 public sealed record DashboardResponse(Performance Overall, IReadOnlyList<SubjectPerformance> Subjects);
 
-public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? QuestionType, Guid? SubjectId = null)
+public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? QuestionType, Guid? SubjectId = null,
+    string? SubjectGroup = null)
 {
-    public static DashboardFilter Parse(string? period, string? today, string? questionType, Guid? subjectId = null)
+    public static DashboardFilter Parse(string? period, string? today, string? questionType, Guid? subjectId = null,
+        string? subjectGroup = null)
     {
+        if (subjectGroup == "") subjectGroup = null;
+        if (subjectGroup is not null && (subjectGroup.Length != 2 || !subjectGroup.All(char.IsAsciiDigit)))
+            throw new ValidationException("subjectGroup", "Informe um grupo com dois dígitos.");
         if (!DateOnly.TryParseExact(today, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None, out var date))
             throw new ValidationException("today", "Informe uma data válida.");
@@ -56,6 +61,6 @@ public sealed record DashboardFilter(DateOnly Today, DateOnly? Start, string? Qu
             "unspecified" => QuestionTypes.Unspecified,
             _ => null
         };
-        return new(date, start, type, subjectId);
+        return new(date, start, type, subjectId, subjectGroup);
     }
 }

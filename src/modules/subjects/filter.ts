@@ -3,3 +3,7 @@ export function parseSubjectFilter(value: unknown): string | undefined {
     ? value.toLowerCase()
     : undefined;
 }
+
+export function parseSubjectGroupFilter(value: unknown): string | undefined {
+  return typeof value === "string" && /^[0-9]{2}$/.test(value) ? value : undefined;
+}

@@ -31,7 +31,7 @@ describe("subject groups", () => {
     expect(getSubjectGroup("1000 Assunto").code).toBe("10");
   });
 
-  it.each(["", "Direito Civil", "Assunto 1000", "1 — Assunto", "1000abc", "10.5 — Assunto"])(
+  it.each(["", "Direito Civil", "Assunto 1000", "1 — Assunto", "10 — Assunto", "100 — Assunto", "10000 — Assunto", "1000abc", "10.5 — Assunto"])(
     "uses a neutral presentation for invalid or missing codes: %s",
     (subject) => {
       expect(getSubjectGroup(subject)).toEqual(getSubjectGroup("Sem código"));

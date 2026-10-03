@@ -111,6 +111,7 @@ describe("DashboardPage", () => {
       "2026-08-24",
       QuestionType.DOCTRINE,
       undefined,
+      undefined,
     );
     expect(mocks.getMockExamPerformance).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "Desempenho nos simulados" })).not.toBeInTheDocument();
@@ -140,7 +141,7 @@ describe("DashboardPage", () => {
 
     render(page);
 
-    expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all", undefined);
+    expect(mocks.getDashboard).toHaveBeenCalledWith("30d", "2026-08-24", "all", undefined, undefined);
     expect(screen.getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -230,7 +231,7 @@ describe("DashboardPage", () => {
     await DashboardPage({ searchParams: Promise.resolve({ period, today }) });
 
     expect(mocks.getDashboard).toHaveBeenCalledOnce();
-    expect(mocks.getDashboard).toHaveBeenCalledWith(period, today, "all", undefined);
+    expect(mocks.getDashboard).toHaveBeenCalledWith(period, today, "all", undefined, undefined);
   });
 
   it("propagates a dashboard query failure for a valid window", async () => {
@@ -244,26 +245,27 @@ describe("DashboardPage", () => {
 
   it("combines the subject with the period and type and retains it in navigation", async () => {
     render(await DashboardPage({ searchParams: Promise.resolve({
-      period: "7d", today: "2026-08-24", questionType: "doctrine", subjectId: constitutionalism.id,
+      period: "7d", today: "2026-08-24", questionType: "doctrine", subjectId: constitutionalism.id, subjectGroup: "10",
     }) }));
 
-    expect(mocks.getDashboard).toHaveBeenCalledWith("7d", "2026-08-24", QuestionType.DOCTRINE, constitutionalism.id);
+    expect(mocks.getDashboard).toHaveBeenCalledWith("7d", "2026-08-24", QuestionType.DOCTRINE, constitutionalism.id, "10");
     expect(screen.getByRole("combobox", { name: "Assunto" })).toHaveValue(constitutionalism.id);
     for (const name of ["90 dias", "Lei Seca", "Simulados"]) {
       const href = screen.getByRole("link", { name }).getAttribute("href")!;
       expect(new URL(href, "https://example.com").searchParams.get("subjectId")).toBe(constitutionalism.id);
+      expect(new URL(href, "https://example.com").searchParams.get("subjectGroup")).toBe("10");
     }
     expect(screen.getByRole("heading", { name: "Nenhuma sessão encontrada para os filtros selecionados" })).toBeVisible();
   });
 
   it("retains the subject in the mock exam tab without filtering mock exams", async () => {
     render(await DashboardPage({ searchParams: Promise.resolve({
-      tab: "simulados", period: "7d", today: "2026-08-24", subjectId: constitutionalism.id,
+      tab: "simulados", period: "7d", today: "2026-08-24", subjectId: constitutionalism.id, subjectGroup: "10",
     }) }));
     expect(mocks.getDashboard).not.toHaveBeenCalled();
     expect(mocks.getMockExamPerformance).toHaveBeenCalledWith("7d", "2026-08-24");
     expect(screen.queryByRole("combobox", { name: "Assunto" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sessões de estudo" })).toHaveAttribute("href",
-      `/dashboard?period=7d&today=2026-08-24&questionType=all&subjectId=${constitutionalism.id}`);
+      `/dashboard?period=7d&today=2026-08-24&questionType=all&subjectId=${constitutionalism.id}&subjectGroup=10`);
   });
 });

@@ -10,7 +10,7 @@ export function PerformanceBars({ data, filtered = false }: Readonly<{ data: Das
     return (
       <section className={styles.empty} aria-labelledby="dashboard-empty-title">
         <h2 id="dashboard-empty-title">{filtered ? "Nenhuma sessão encontrada para os filtros selecionados" : "Ainda não há desempenho neste período"}</h2>
-        <p>{filtered ? "Ajuste o assunto, o período ou o tipo de questão para consultar outras sessões." : "Registre uma sessão com questões para começar a comparar acertos e erros por assunto."}</p>
+        <p>{filtered ? "Ajuste o grupo, o assunto, o período ou o tipo de questão para consultar outras sessões." : "Registre uma sessão com questões para começar a comparar acertos e erros por assunto."}</p>
         <Link href="/sessions/new">Registrar uma sessão</Link>
       </section>
     );
