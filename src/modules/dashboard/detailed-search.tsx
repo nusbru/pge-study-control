@@ -7,6 +7,7 @@ import { getSubjectGroup } from "@/modules/subjects/group";
 import { SubjectFilter } from "@/modules/subjects/subject-filter";
 import fieldStyles from "@/modules/subjects/subject-filter.module.css";
 import styles from "./dashboard.module.css";
+import { Icon } from "@/components/ui/icon";
 
 type DetailedSearchProps = {
   subjects: SubjectResponse[];
@@ -30,6 +31,7 @@ export function DetailedSearch({ subjects, subjectId, subjectGroup, query }: Rea
   return (
     <details className={styles.detailedSearch} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>
+        <span className={styles.searchIcon}><Icon name="search" width="20" height="20" /></span>
         Busca detalhada
         {activeCount > 0 && <span className={styles.activeFilters}>
           {activeCount} {activeCount === 1 ? "filtro ativo" : "filtros ativos"}

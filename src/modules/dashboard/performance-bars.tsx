@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { formatPercentage } from "@/modules/study-sessions/domain";
-import { getSubjectGroup } from "@/modules/subjects/group";
 import type { DashboardData } from "./queries";
 import styles from "./dashboard.module.css";
 
@@ -39,7 +38,7 @@ export function PerformanceBars({ data, filtered = false }: Readonly<{ data: Das
           return (
             <li className={styles.subject} key={subject.subjectId}>
               <div className={styles.subjectHeading}>
-                <h3 style={{ color: getSubjectGroup(subject.subject).color }}>{subject.subject}</h3>
+                <h3>{subject.subject}</h3>
                 <span>{subject.totalQuestions} {questionLabel}</span>
               </div>
               <dl className={styles.subjectCounts}>
