@@ -212,11 +212,48 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 
     [Theory]
     [InlineData("/api/dashboard?period=7d&today=2026-09-09&subjectId=invalid")]
+    [InlineData("/api/dashboard?period=7d&today=2026-09-09&subjectGroup=invalid")]
     [InlineData("/api/sessions?subjectId=invalid")]
     public async Task SubjectFilter_MalformedId_ReturnsBadRequest(string url)
     {
         using var browser = await Login();
         Assert.Equal(HttpStatusCode.BadRequest, (await browser.GetAsync(url)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Dashboard_SubjectGroup_IntersectsFiltersBeforeWeightedAggregation()
+    {
+        using var owner = await Login();
+        using var other = await Login();
+        var environmentalLaw = new Guid("637b1f28-c611-494a-969c-97282842f981");
+        await Create(owner, Session() with { TotalQuestions = 10, CorrectAnswers = 9 });
+        await Create(owner, Session() with { SubjectId = ConstituentPower, TotalQuestions = 100, CorrectAnswers = 10 });
+        await Create(owner, Session() with { SubjectId = environmentalLaw });
+        await Create(owner, Session() with { QuestionType = "JURISPRUDENCE" });
+        await Create(owner, Session() with { StudyDate = new DateOnly(2026, 9, 2) });
+        await Create(owner, Session() with { StudyDate = new DateOnly(2026, 9, 10) });
+        await Create(other, Session());
+        const string url = "/api/dashboard?period=7d&today=2026-09-09&questionType=doctrine&subjectGroup=10";
+
+        var group = (await owner.GetFromJsonAsync<DashboardResponse>(url))!;
+        Assert.Equal(110, group.Overall.TotalQuestions);
+        Assert.Equal(19, group.Overall.CorrectAnswers);
+        Assert.Equal(91, group.Overall.WrongAnswers);
+        Assert.Equal(17.3m, group.Overall.CorrectPercentage);
+        Assert.Equal(2, group.Subjects.Count);
+        Assert.All(group.Subjects, subject => Assert.StartsWith("10", subject.Subject));
+
+        var subject = (await owner.GetFromJsonAsync<DashboardResponse>($"{url}&subjectId={Constitutionalism}"))!;
+        Assert.Equal(10, subject.Overall.TotalQuestions);
+        Assert.Equal(Constitutionalism, Assert.Single(subject.Subjects).SubjectId);
+
+        foreach (var emptyUrl in new[] { $"{url}&subjectId={environmentalLaw}", url.Replace("subjectGroup=10", "subjectGroup=99") })
+        {
+            var empty = (await owner.GetFromJsonAsync<DashboardResponse>(emptyUrl))!;
+            Assert.Empty(empty.Subjects);
+            Assert.Equal(0, empty.Overall.TotalQuestions);
+            Assert.Null(empty.Overall.CorrectPercentage);
+        }
     }
 
     [Fact]

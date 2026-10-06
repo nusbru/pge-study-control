@@ -4,6 +4,8 @@ import { test, registerAndLogin, controlledToday } from "./helpers";
 
 test("simulado com cronômetro, correção, dashboard e exclusão", async ({ page }, testInfo) => {
   await registerAndLogin(page, "mock-exam");
+  const menu = page.getByRole("button", { name: "Abrir navegação" });
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Simulados", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Seu próximo simulado começa aqui" })).toBeVisible();
   await page.getByRole("link", { name: "Novo simulado" }).click();

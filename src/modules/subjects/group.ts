@@ -20,7 +20,7 @@ const neutralColors: GroupColors = {
 };
 
 export function getSubjectGroup(subject: string) {
-  const code = /^\s*(\d{2})\d*(?=\s|[—–-]|$)/.exec(subject)?.[1] ?? null;
+  const code = /^\s*(\d{2})\d{2}(?=\s|[—–-]|$)/.exec(subject)?.[1] ?? null;
   if (code === null) return { code, ...neutralColors };
 
   // New prefixes also receive a stable color without changing existing groups.

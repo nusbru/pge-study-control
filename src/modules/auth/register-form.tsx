@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { registerAction, type AuthActionState } from "./actions";
 import styles from "./auth-form.module.css";
+import { BrandMark } from "@/components/ui/icon";
 
 const initialState: AuthActionState = { ok: false };
 
@@ -14,7 +15,7 @@ export function RegisterForm() {
 
   return (
     <section className={styles.panel} aria-labelledby="register-title">
-      <Link className={styles.brand} href="/">PGE Study</Link>
+      <Link className={styles.brand} href="/"><BrandMark />PGE Study</Link>
       <div className={styles.heading}>
         <h1 id="register-title">Crie sua conta</h1>
         <p>Comece a organizar seu estudo com clareza.</p>

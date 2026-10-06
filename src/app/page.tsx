@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-user";
 import styles from "./home.module.css";
+import { BrandMark } from "@/components/ui/icon";
 
 const exampleSubjects = [
   { name: "Direito Constitucional", correct: 24, wrong: 6, percentage: 80 },
@@ -34,9 +35,9 @@ export default async function HomePage() {
 
   return (
     <div className={styles.page}>
-      <a className={styles.skipLink} href="#conteudo">Pular para o conteúdo</a>
+      <a className="skipLink" href="#conteudo">Pular para o conteúdo</a>
       <header className={styles.header}>
-        <Link className={styles.brand} href="/" aria-label="PGE Study — página inicial">PGE Study<span aria-hidden="true">.</span></Link>
+        <Link className={styles.brand} href="/" aria-label="PGE Study — página inicial"><BrandMark />PGE Study</Link>
         <nav className={styles.navigation} aria-label="Acesso à plataforma">
           <a className={styles.featuresLink} href="#recursos">Conhecer recursos</a>
           <Link className={styles.textLink} href="/login">Entrar</Link>

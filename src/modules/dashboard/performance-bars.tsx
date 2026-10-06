@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { formatPercentage } from "@/modules/study-sessions/domain";
-import { getSubjectGroup } from "@/modules/subjects/group";
 import type { DashboardData } from "./queries";
 import styles from "./dashboard.module.css";
 
@@ -10,7 +9,7 @@ export function PerformanceBars({ data, filtered = false }: Readonly<{ data: Das
     return (
       <section className={styles.empty} aria-labelledby="dashboard-empty-title">
         <h2 id="dashboard-empty-title">{filtered ? "Nenhuma sessão encontrada para os filtros selecionados" : "Ainda não há desempenho neste período"}</h2>
-        <p>{filtered ? "Ajuste o assunto, o período ou o tipo de questão para consultar outras sessões." : "Registre uma sessão com questões para começar a comparar acertos e erros por assunto."}</p>
+        <p>{filtered ? "Ajuste o grupo, o assunto, o período ou o tipo de questão para consultar outras sessões." : "Registre uma sessão com questões para começar a comparar acertos e erros por assunto."}</p>
         <Link href="/sessions/new">Registrar uma sessão</Link>
       </section>
     );
@@ -39,7 +38,7 @@ export function PerformanceBars({ data, filtered = false }: Readonly<{ data: Das
           return (
             <li className={styles.subject} key={subject.subjectId}>
               <div className={styles.subjectHeading}>
-                <h3 style={{ color: getSubjectGroup(subject.subject).color }}>{subject.subject}</h3>
+                <h3>{subject.subject}</h3>
                 <span>{subject.totalQuestions} {questionLabel}</span>
               </div>
               <dl className={styles.subjectCounts}>

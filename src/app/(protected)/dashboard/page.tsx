@@ -20,8 +20,8 @@ import { getMockExamPerformance } from "@/modules/mock-exams/queries";
 import { MockExamPerformanceSection } from "@/modules/mock-exams/performance-section";
 import { parseDashboardTab } from "@/modules/dashboard/tab";
 import { listSubjects } from "@/modules/study-sessions/repository";
-import { parseSubjectFilter } from "@/modules/subjects/filter";
-import { SubjectFilter } from "@/modules/subjects/subject-filter";
+import { parseSubjectFilter, parseSubjectGroupFilter } from "@/modules/subjects/filter";
+import { DetailedSearch } from "@/modules/dashboard/detailed-search";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -30,6 +30,7 @@ type DashboardPageProps = {
     questionType?: string | string[];
     tab?: string | string[];
     subjectId?: string | string[];
+    subjectGroup?: string | string[];
   }>;
 };
 
@@ -56,11 +57,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     questionType: rawQuestionType,
     tab: rawTab,
     subjectId: rawSubjectId,
+    subjectGroup: rawSubjectGroup,
   } = await searchParams;
   const tab = parseDashboardTab(rawTab);
   const tabQuery = tab === "simulados" ? { tab } : {};
   const subjectId = parseSubjectFilter(rawSubjectId);
-  const subjectQuery = subjectId ? { subjectId } : {};
+  const subjectGroup = parseSubjectGroupFilter(rawSubjectGroup);
+  const subjectQuery = { ...(subjectId ? { subjectId } : {}), ...(subjectGroup ? { subjectGroup } : {}) };
   const description = tab === "simulados"
     ? "Acompanhe o aproveitamento, o tempo e a evolução dos seus simulados."
     : "Uma leitura ponderada das questões para orientar o próximo assunto de estudo.";
@@ -78,13 +81,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p>{description}</p>
           </div>
         </header>
-        <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} subjectId={subjectId} />
+        <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} subjectId={subjectId} subjectGroup={subjectGroup} />
       </main>
     );
   }
 
   const [data, subjects] = tab === "sessoes"
-    ? await Promise.all([getDashboard(period, today, questionType, subjectId), listSubjects()])
+    ? await Promise.all([getDashboard(period, today, questionType, subjectId, subjectGroup), listSubjects()])
     : [null, []];
   const mockExams = tab === "simulados" ? await getMockExamPerformance(period, today) : null;
   const overallCorrect = data?.overall.correctPercentage == null
@@ -96,7 +99,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <>
-      <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} subjectId={subjectId} />
+      <LocalTodayRedirect period={period} today={today} questionType={questionType} tab={tab} subjectId={subjectId} subjectGroup={subjectGroup} />
       <main className="protectedPage">
         <header className="protectedPageHeader">
           <div>
@@ -156,7 +159,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>}
               </div>
               {tab === "sessoes" && (
-                <SubjectFilter subjects={subjects} subjectId={subjectId} pathname="/dashboard"
+                <DetailedSearch subjects={subjects} subjectId={subjectId} subjectGroup={subjectGroup}
                   query={{ period, today, questionType: questionTypeParam }} />
               )}
             </div>
@@ -195,7 +198,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </dl>}
         </section>
 
-        {data && <PerformanceBars data={data} filtered={!!subjectId || questionType !== "all"} />}
+        {data && <PerformanceBars data={data} filtered={!!subjectId || !!subjectGroup || questionType !== "all"} />}
         {mockExams && <MockExamPerformanceSection data={mockExams} />}
       </main>
     </>

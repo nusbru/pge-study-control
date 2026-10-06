@@ -6,8 +6,9 @@ import { serializeDashboardQuestionType, type DashboardQuestionType } from "./qu
 export type { DashboardData } from "@/lib/api/contracts";
 export type DashboardSubject = DashboardData["subjects"][number];
 
-export async function getDashboard(period: DashboardPeriod, today: string, questionType: DashboardQuestionType, subjectId?: string) {
+export async function getDashboard(period: DashboardPeriod, today: string, questionType: DashboardQuestionType, subjectId?: string, subjectGroup?: string) {
   const params = new URLSearchParams({ period, today, questionType: serializeDashboardQuestionType(questionType) });
   if (subjectId) params.set("subjectId", subjectId);
+  if (subjectGroup) params.set("subjectGroup", subjectGroup);
   return serverApi<DashboardData>(`/api/dashboard?${params}`);
 }

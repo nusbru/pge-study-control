@@ -16,6 +16,7 @@ type LocalTodayRedirectProps = {
   questionType: DashboardQuestionType;
   tab?: DashboardTab;
   subjectId?: string;
+  subjectGroup?: string;
 };
 
 export function LocalTodayRedirect({
@@ -24,6 +25,7 @@ export function LocalTodayRedirect({
   questionType,
   tab = "sessoes",
   subjectId,
+  subjectGroup,
 }: Readonly<LocalTodayRedirectProps>) {
   const router = useRouter();
 
@@ -42,8 +44,9 @@ export function LocalTodayRedirect({
     });
     if (tab === "simulados") query.set("tab", tab);
     if (subjectId) query.set("subjectId", subjectId);
+    if (subjectGroup) query.set("subjectGroup", subjectGroup);
     router.replace(`/dashboard?${query.toString()}`, { scroll: false });
-  }, [period, questionType, router, today, tab, subjectId]);
+  }, [period, questionType, router, today, tab, subjectId, subjectGroup]);
 
   if (today) return null;
 

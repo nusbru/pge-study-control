@@ -107,11 +107,23 @@ test("core pages remain responsive and accessible", async ({ page }) => {
       await expect(page.getByRole("heading", { name: "Sessões de estudo" })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} history`);
       await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto" }), `${viewport.name} history subject filter`);
+      if (viewport.name === "mobile") {
+        const menu = page.getByRole("button", { name: "Abrir navegação" });
+        await expectKeyboardFocusVisible(page, menu, "mobile navigation menu");
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("dialog", { name: "Seus estudos" })).toBeVisible();
+        await expectAccessiblePage(page, "mobile navigation sheet");
+      }
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("link", { name: "Sessões", exact: true }),
         `${viewport.name} navigation link`,
       );
+      if (viewport.name === "mobile") {
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog")).not.toBeVisible();
+        await expect(page.getByRole("button", { name: "Abrir navegação" })).toBeFocused();
+      }
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("button", { name: `Excluir sessão de ${environmentalLaw.subject}` }),
@@ -144,7 +156,13 @@ test("core pages remain responsive and accessible", async ({ page }) => {
         name: `${environmentalLaw.subject}: 60,0% de acertos e 40,0% de erros em 10 questões`,
       })).toBeVisible();
       await expectAccessiblePage(page, `${viewport.name} dashboard`);
-      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto" }), `${viewport.name} dashboard subject filter`);
+      const detailedSearch = page.locator("summary", { hasText: "Busca detalhada" });
+      await expectKeyboardFocusVisible(page, detailedSearch, `${viewport.name} detailed search`);
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("combobox", { name: "Grupo de assunto" })).toBeVisible();
+      await expectAccessiblePage(page, `${viewport.name} dashboard detailed search`);
+      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Grupo de assunto" }), `${viewport.name} group filter`);
+      await expectKeyboardFocusVisible(page, page.getByRole("combobox", { name: "Assunto", exact: true }), `${viewport.name} dashboard subject filter`);
       await expectKeyboardFocusVisible(
         page,
         page.getByRole("link", { name: "30 dias", exact: true }),

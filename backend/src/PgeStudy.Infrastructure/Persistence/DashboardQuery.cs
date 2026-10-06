@@ -15,6 +15,10 @@ public sealed class DashboardQuery(AppDbContext db) : IDashboardQuery
                   AND ({filter.Start}::date IS NULL OR study_date >= {filter.Start})
                   AND ({filter.QuestionType}::text IS NULL OR question_type = {filter.QuestionType})
                   AND ({filter.SubjectId}::uuid IS NULL OR subject_id = {filter.SubjectId})
+                  AND ({filter.SubjectGroup}::text IS NULL OR subject_id IN (
+                      SELECT id FROM study_subjects
+                      WHERE substring(subject FROM '^\s*([0-9][0-9])[0-9][0-9](?:\s|[—–-]|$)') = {filter.SubjectGroup}
+                  ))
             ), subjects AS (
                 SELECT f.subject_id, s.subject, SUM(f.total_questions) AS total,
                        SUM(f.correct_answers) AS correct, SUM(f.wrong_answers) AS wrong
